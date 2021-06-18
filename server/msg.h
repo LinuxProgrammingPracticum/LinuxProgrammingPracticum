@@ -1,3 +1,5 @@
+#ifndef MSG_H
+#define MSG_H
 /**
  * Login                ：登录
  * Register             ：注册
@@ -26,7 +28,7 @@ enum Type {
 /**
  * command  ： 确定消息类型
  * target   ： 目标（若为向用户发送消息或查找用户历史消息，目标为用户名
- *                  若为向群组发送消息或查找群组历史消息，抑或是加群和退群，目标为群组名
+ *                  若为向群组发送消息或查找群组历史消息，抑或是加群和退群，抑或是建群和删群，目标为群组名
  *                  其他可填server，也可不填此选项）
  * me       ： 用户自身
  * buf      ： 内容（若为登录或者注册，则内容填密码）
@@ -40,3 +42,4 @@ typedef struct Msg {
     unsigned buflen;
     char buf[2048];
 } msg;
+#endif
