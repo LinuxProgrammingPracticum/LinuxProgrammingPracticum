@@ -11,6 +11,7 @@
  * DeleteGroup          ：删群
  * JoinGroup            ：加群
  * QuitGroup            ：退群
+ * Info                 ：服务器返回的消息
  */
 enum Type {
     Login,
@@ -23,6 +24,7 @@ enum Type {
     DeleteGroup,
     JoinGroup,
     QuitGroup,
+    Info,
 };
 
 /**

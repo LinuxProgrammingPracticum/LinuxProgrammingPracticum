@@ -4,13 +4,13 @@
 #include <string.h>
 #include "msg.h"
 /**
- * 向客户端返回错误信息
+ * 服务器向客户端发送信息（修改密码成功、查询失败等）
  * 参数：
  *      message ：客户端发送的信息
  *      sockfd  ：与用户连接的套接字描述符
- *      string  ：错误信息
+ *      string  ：信息
  */
-void errormsg(msg message, int sockfd, char* string);
+void infomsg(msg message, int sockfd, char* string);
 /**
  * 登录
  * 功能：向客户端发送结果信息
