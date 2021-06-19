@@ -172,10 +172,11 @@ bool sendtogroup(msg message, int sockfd) {
     MYSQL_RES* result = query(sql);
     MYSQL_ROW sqlrow;
     int sock;
-    while(sqlrow=mysql_fetch_row(result)){
-        sock=findsockfd(sqlrow[0]);
-        if(sock!=0){
-            write(sock,&message,sizeof(message));//向所有在线成员发送（包括自身的回音）
+    while (sqlrow = mysql_fetch_row(result)) {
+        sock = findsockfd(sqlrow[0]);
+        if (sock != 0) {
+            write(sock, &message,
+                  sizeof(message));  //向所有在线成员发送（包括自身的回音）
         }
     }
 
@@ -193,11 +194,58 @@ bool sendtogroup(msg message, int sockfd) {
 /**
  * 私聊历史信息查询
  */
-bool queryhistoryfromuser(msg message, int sockfd);
+bool queryhistoryfromuser(msg message, int sockfd) {
+    char sql[200];
+    msg info;
+    info.command = message.command;
+    sprintf(sql,
+            "select username,targetname,time,content from userchat where  "
+            "(username = \"%s\" and targetname = \"%s\")or(username = \"%s\" "
+            "and targetname = \"%s\") order by time asc",
+            message.me, message.target, message.target, message.me);
+    MYSQL_RES* result = query(sql);
+    MYSQL_ROW sqlrow;
+    int i;
+    while (sqlrow = mysql_fetch_row(result)) {
+        strcpy(info.me, sqlrow[0]);
+        info.melen = strlen(info.me);
+        strcpy(info.target, sqlrow[1]);
+        info.targetlen = strlen(info.target);
+        strcpy(info.buf, sqlrow[2]);
+        strcat(info.buf, " : ");
+        strcat(info.buf, sqlrow[3]);
+        info.buflen = strlen(info.buf);
+        write(sockfd, &info, sizeof(msg));
+    }
+    return true;
+}
 /**
- * 群聊历时信息查询
+ * 群聊历史信息查询
  */
-bool queryhistoryfromgroup(msg message, int sockfd);
+bool queryhistoryfromgroup(msg message, int sockfd) {
+    char sql[200];
+    msg info;
+    info.command = message.command;
+    sprintf(sql,
+            "select username,groupname,time,content from groupchat where "
+            "groupname = \"%s\" order by time asc",
+            message.target);
+    MYSQL_RES* result = query(sql);
+    MYSQL_ROW sqlrow;
+    int i;
+    while (sqlrow = mysql_fetch_row(result)) {
+        strcpy(info.me, sqlrow[0]);
+        info.melen = strlen(info.me);
+        strcpy(info.target, sqlrow[1]);
+        info.targetlen = strlen(info.target);
+        strcpy(info.buf, sqlrow[2]);
+        strcat(info.buf, " : ");
+        strcat(info.buf, sqlrow[3]);
+        info.buflen = strlen(info.buf);
+        write(sockfd, &info, sizeof(msg));
+    }
+    return true;
+}
 /**
  * 建群
  */
