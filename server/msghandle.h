@@ -2,8 +2,27 @@
 #define MSGHANDLE_H
 #include <stdbool.h>
 #include <string.h>
+#include <unistd.h>
 #include "msg.h"
 #include "sql.h"
+/**
+ * 从数据库查找已连接的用户sockfd
+ * 参数：用户名
+ * 返回值：对应套接字描述符
+ */
+int findsockfd(char* username) {
+    char sql[200];
+    sprintf(sql, "select sock from sock where name = \"%s\"", username);
+    MYSQL_RES* result = query(sql);
+    int rows = mysql_num_rows(result);
+    int sockfd = 0;
+    if (rows != 0) {
+        MYSQL_ROW sqlrow = mysql_fetch_row(result);
+        sscanf(sqlrow[0], "%d", &sockfd);
+    }
+    mysql_free_result(result);
+    return sockfd;
+}
 /**
  * 服务器向客户端发送信息（修改密码成功、查询失败等）
  * 参数：
@@ -11,7 +30,17 @@
  *      sockfd  ：与用户连接的套接字描述符
  *      string  ：信息
  */
-void infomsg(msg message, int sockfd, char* string);
+void infomsg(msg message, int sockfd, char* string) {
+    msg info;
+    info.command = Info;
+    strcpy(info.target, message.me);
+    info.targetlen = message.melen;
+    strcpy(info.me, "server");
+    info.melen = strlen("server");
+    strcpy(info.buf, string);
+    info.buflen = strlen(string);
+    write(sockfd, &info, sizeof(info));
+}
 /**
  * 登录
  * 功能：向客户端发送结果信息
@@ -22,19 +51,145 @@ void infomsg(msg message, int sockfd, char* string);
  *      true表示成功，false表示失败
  * （下同）
  */
-bool login(msg message, int sockfd);
+bool login(msg message, int sockfd) {
+    msg info;
+
+    info.command = Info;
+    strcpy(info.target, message.me);
+    info.targetlen = message.melen;
+    strcpy(info.me, "server");
+    info.melen = strlen("server");
+    char string[45];
+
+    char sql[200];
+    sprintf(sql, "select * from user where name = \"%s\" and pwd = \"%s\"",
+            message.me, message.buf);
+    MYSQL_RES* result = query(sql);
+    if (result == NULL) {
+        strcpy(string, "error");
+        strcpy(info.buf, string);
+        info.buflen = strlen(string);
+        write(sockfd, &info, sizeof(info));
+        mysql_free_result(result);
+        return false;
+    }
+
+    int rows = mysql_num_rows(result);
+
+    if (rows == 0) {
+        strcpy(string, "用户名或密码错误");
+        strcpy(info.buf, string);
+        info.buflen = strlen(string);
+    } else {
+        strcpy(string, "success");
+        strcpy(info.buf, string);
+        info.buflen = strlen(string);
+    }
+    mysql_free_result(result);
+
+    write(sockfd, &info, sizeof(info));
+
+    return true;
+}
 /**
  * 注册
+ * (此处可复用infomsg代码，可优化)
  */
-bool registe(msg message, int sockfd);
+bool registe(msg message, int sockfd) {
+    msg info;
+
+    info.command = Info;
+    strcpy(info.target, message.me);
+    info.targetlen = message.melen;
+    strcpy(info.me, "server");
+    info.melen = strlen("server");
+    char string[45];
+
+    char sql[200];
+    sprintf(sql, "select * from user where name = \"%s\" ", message.me);
+    MYSQL_RES* result = query(sql);
+    if (result == NULL) {
+        strcpy(string, "error");
+        strcpy(info.buf, string);
+        info.buflen = strlen(string);
+        write(sockfd, &info, sizeof(info));
+        mysql_free_result(result);
+        return false;
+    }
+
+    int rows = mysql_num_rows(result);
+    mysql_free_result(result);
+
+    if (rows == 0) {
+        sprintf(sql, "insert into user(name,pwd) values (\"%s\",\"%s\")",
+                message.me, message.buf);
+        if (update(sql) == EXIT_SUCCESS) {
+            strcpy(string, "创建成功");
+            strcpy(info.buf, string);
+            info.buflen = strlen(string);
+        } else {
+            strcpy(string, "创建失败");
+            strcpy(info.buf, string);
+            info.buflen = strlen(string);
+            write(sockfd, &info, sizeof(info));
+            return false;
+        }
+    } else {
+        strcpy(string, "该用户已存在");
+        strcpy(info.buf, string);
+        info.buflen = strlen(string);
+    }
+
+    write(sockfd, &info, sizeof(info));
+
+    return true;
+}
 /**
  * 私聊
  */
-bool sendtouser(msg message, int sockfd);
+bool sendtouser(msg message, int sockfd) {
+    write(sockfd, &message, sizeof(message));  //回音
+    int targetsock = findsockfd(message.target);
+    if (sockfd != 0)
+        write(targetsock, &message, sizeof(message));  //若对方在线，发送消息
+    //存储到数据库中
+    char sql[2048];
+    sprintf(sql,
+            "insert into userchat(username,targetname,time,content) "
+            "values(\"%s\",\"%s\",now(),\"%s\")",
+            message.me, message.target, message.buf);
+    if (update(sql) == EXIT_SUCCESS)
+        return true;
+    return false;
+}
 /**
  * 群聊
  */
-bool sendtogroup(msg message, int sockfd);
+bool sendtogroup(msg message, int sockfd) {
+    char sql[2048];
+    sprintf(sql, "select username from groupmember where groupname = \"%s\"",
+            message.target);
+    MYSQL_RES* result = query(sql);
+    MYSQL_ROW sqlrow;
+    int sock;
+    while(sqlrow=mysql_fetch_row(result)){
+        sock=findsockfd(sqlrow[0]);
+        if(sock!=0){
+            write(sock,&message,sizeof(message));//向所有在线成员发送（包括自身的回音）
+        }
+    }
+
+    //存储到数据库中
+    memset(sql, '\0', sizeof(sql));
+    sprintf(sql,
+            "insert into "
+            "groupchat(username,groupname,time,content)values(\"%s\",\"%s\","
+            "now(),\"%s\")",
+            message.me, message.target, message.buf);
+    if (update(sql) == EXIT_SUCCESS)
+        return true;
+    return false;
+}
 /**
  * 私聊历史信息查询
  */
