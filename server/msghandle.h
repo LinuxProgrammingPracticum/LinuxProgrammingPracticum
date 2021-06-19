@@ -30,9 +30,9 @@ int findsockfd(char* username) {
  *      sockfd  ：与用户连接的套接字描述符
  *      string  ：信息
  */
-void infomsg(msg message, int sockfd, char* string) {
+void infomsg(msg message, Type type, int sockfd, char* string) {
     msg info;
-    info.command = Info;
+    info.command = type;
     strcpy(info.target, message.me);
     info.targetlen = message.melen;
     strcpy(info.me, "server");
@@ -54,7 +54,7 @@ void infomsg(msg message, int sockfd, char* string) {
 bool login(msg message, int sockfd) {
     msg info;
 
-    info.command = Info;
+    info.command = message.command;
     strcpy(info.target, message.me);
     info.targetlen = message.melen;
     strcpy(info.me, "server");
@@ -179,6 +179,7 @@ bool sendtogroup(msg message, int sockfd) {
                   sizeof(message));  //向所有在线成员发送（包括自身的回音）
         }
     }
+    mysql_free_result(result);
 
     //存储到数据库中
     memset(sql, '\0', sizeof(sql));
@@ -217,6 +218,7 @@ bool queryhistoryfromuser(msg message, int sockfd) {
         info.buflen = strlen(info.buf);
         write(sockfd, &info, sizeof(msg));
     }
+    mysql_free_result(result);
     return true;
 }
 /**
@@ -244,16 +246,37 @@ bool queryhistoryfromgroup(msg message, int sockfd) {
         info.buflen = strlen(info.buf);
         write(sockfd, &info, sizeof(msg));
     }
+    mysql_free_result(result);
     return true;
 }
 /**
  * 建群
+ * 当发送的message类型为Info表示失败，为AddGroup表示成功
  */
-bool addgroup(msg message, int sockfd);
+bool addgroup(msg message, int sockfd) {
+    char sql[200];
+    sprintf(sql, "select * from groupt where name = \"%s\"");
+    MYSQL_RES* result = query(sql);
+    int rows = mysql_num_rows(result);
+    mysql_free_result(result);
+    if (rows != 0) {
+        infomsg(message, Info, sockfd, "该群已存在");
+        return true;
+    }
+    memset(sql, '\0', sizeof(sql));
+    sprintf(sql, "insert into groupt (name) values(\"%s\")", message.target);
+    update(sql);
+    memset(sql, '\0', sizeof(sql));
+    sprintf(sql, "insert into groupmember(username,groupname,isadmin) values (\"%s\",\"%s\",\"%s\");", message.me,message.target,"yes");
+    update(sql);
+    infomsg(message, AddGroup, sockfd, "成功");
+}
 /**
  * 删群
  */
-bool deletegroup(msg message, int sockfd);
+bool deletegroup(msg message, int sockfd){
+    
+}
 /**
  * 加群
  */
