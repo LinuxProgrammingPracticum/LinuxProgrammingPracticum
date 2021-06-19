@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "msg.h"
+#include "sql.h"
 /**
  * 服务器向客户端发送信息（修改密码成功、查询失败等）
  * 参数：
@@ -37,11 +38,11 @@ bool sendtogroup(msg message, int sockfd);
 /**
  * 私聊历史信息查询
  */
-bool querehistoryfromuser(msg message, int sockfd);
+bool queryhistoryfromuser(msg message, int sockfd);
 /**
  * 群聊历时信息查询
  */
-bool querehistoryfromgroup(msg message, int sockfd);
+bool queryhistoryfromgroup(msg message, int sockfd);
 /**
  * 建群
  */
@@ -82,11 +83,11 @@ bool handle(msg message, int sockfd) {
         case SendToGroup:
             result = sendtogroup(message, sockfd);
             break;
-        case QuereHistoryFromUser:
-            result = querehistoryfromuser(message, sockfd);
+        case queryHistoryFromUser:
+            result = queryhistoryfromuser(message, sockfd);
             break;
-        case QuereHistoryFromGroup:
-            result = querehistoryfromgroup(message, sockfd);
+        case queryHistoryFromGroup:
+            result = queryhistoryfromgroup(message, sockfd);
             break;
         case AddGroup:
             result = addgroup(message, sockfd);

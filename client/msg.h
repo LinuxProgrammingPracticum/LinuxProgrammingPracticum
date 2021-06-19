@@ -5,8 +5,8 @@
  * Register             ：注册
  * SendToUser           ：向用户发送消息
  * SentToGroup          ：向群组发送消息
- * QuereHistoryFromUser ：查找与用户的历史消息
- * QuereHistoryFromGroup：查找群聊历史消息
+ * queryHistoryFromUser ：查找与用户的历史消息
+ * queryHistoryFromGroup：查找群聊历史消息
  * AddGroup             ：建群
  * DeleteGroup          ：删群
  * JoinGroup            ：加群
@@ -18,8 +18,8 @@ enum Type {
     Register,
     SendToUser,
     SendToGroup,
-    QuereHistoryFromUser,
-    QuereHistoryFromGroup,
+    queryHistoryFromUser,
+    queryHistoryFromGroup,
     AddGroup,
     DeleteGroup,
     JoinGroup,
