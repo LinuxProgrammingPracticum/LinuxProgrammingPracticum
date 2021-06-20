@@ -30,7 +30,7 @@ int findsockfd(char* username) {
  *      sockfd  ：与用户连接的套接字描述符
  *      string  ：信息
  */
-void infomsg(msg message, Type type, int sockfd, char* string) {
+void infomsg(msg message, enum Type type, int sockfd, char* string) {
     msg info;
     info.command = type;
     strcpy(info.target, message.me);
@@ -350,7 +350,7 @@ bool quitgroup(msg message, int sockfd) {
         infomsg(message, Info, sockfd, "退群成功");
     } else {
         infomsg(message, Info, sockfd, "不在群中");
-    } 
+    }
 }
 /**
  * 处理信息的总接口
