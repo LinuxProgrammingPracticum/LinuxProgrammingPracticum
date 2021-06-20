@@ -11,7 +11,7 @@
  * DeleteGroup          ：删群
  * JoinGroup            ：加群
  * QuitGroup            ：退群
- * Info                 ：服务器发送消息
+ * Info                 ：服务器发送消息或用户发送关闭连接
  */
 enum Type {
     Login,
@@ -36,7 +36,7 @@ enum Type {
  * buf      ： 内容（若为登录或者注册，则内容填密码）
  */
 typedef struct Msg {
-    Type command;
+    enum Type command;
     unsigned targetlen;
     char target[20];
     unsigned melen;
