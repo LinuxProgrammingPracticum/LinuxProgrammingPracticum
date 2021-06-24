@@ -6,6 +6,28 @@
 #include "msg.h"
 #include "sql.h"
 /**
+ * 向数据库插入sockfd
+ * 参数：文件描述符，用户名
+ * 返回值：成功为true，错误为false
+ */
+bool insertsock(int sockfd, char* name) {
+    char sql[200];
+    sprintf(sql, "insert into sock(sock,name)values(\"%d\",\"%s\")", sockfd,
+            name);
+    return (update(sql));
+}
+/**
+ * 向数据库删除sockfd
+ * 参数：文件描述符
+ * 返回值：成功为true，错误为false
+ */
+bool deletesock(int sockfd) {
+    char sql[200];
+    sprintf(sql, "delete from sock where sock = \"%d\"", sockfd);
+    return (update(sql));
+}
+
+/**
  * 从数据库查找已连接的用户sockfd
  * 参数：用户名
  * 返回值：对应套接字描述符
@@ -388,6 +410,8 @@ bool quitgroup(msg message, int sockfd) {
  */
 bool handle(msg message, int sockfd) {
     bool result;
+    if (findsockfd(message.me) == 0)
+        insertsock(sockfd, message.me);
     switch (message.command) {
         case Login:
             result = login(message, sockfd);
