@@ -111,8 +111,9 @@ bool login(msg message, int sockfd) {
     }
     mysql_free_result(result);
 
-    int result = write(sockfd, &info, sizeof(info));
-    if (result == -1)
+    int n;
+    n = write(sockfd, &info, sizeof(info));
+    if (n == -1)
         return false;
     return true;
 }
@@ -165,8 +166,9 @@ bool registe(msg message, int sockfd) {
         info.buflen = strlen(string);
     }
 
-    int result = write(sockfd, &info, sizeof(info));
-    if (result == -1)
+    int n;
+    n = write(sockfd, &info, sizeof(info));
+    if (n == -1)
         return false;
     return true;
 }
@@ -197,15 +199,17 @@ bool sendtogroup(msg message, int sockfd) {
     char sql[2048];
     sprintf(sql, "select username from groupmember where groupname = \"%s\"",
             message.target);
-    MYSQL_RES* result = query(sql);
+    MYSQL_RES* result;
+    result = query(sql);
     MYSQL_ROW sqlrow;
     int sock;
-    int result = 0;
+    int n;
+    n = 0;
     while (sqlrow = mysql_fetch_row(result)) {
         sock = findsockfd(sqlrow[0]);
         if (sock != 0) {
             //向所有在线成员发送（包括自身的回音）
-            result = write(sock, &message, sizeof(message));
+            n = write(sock, &message, sizeof(message));
         }
     }
     mysql_free_result(result);
@@ -236,7 +240,8 @@ bool queryhistoryfromuser(msg message, int sockfd) {
     MYSQL_RES* result = query(sql);
     MYSQL_ROW sqlrow;
     int i;
-    int result = 0;
+    int n;
+    result = 0;
     while (sqlrow = mysql_fetch_row(result)) {
         strcpy(info.me, sqlrow[0]);
         info.melen = strlen(info.me);
@@ -246,11 +251,11 @@ bool queryhistoryfromuser(msg message, int sockfd) {
         strcat(info.buf, " : ");
         strcat(info.buf, sqlrow[3]);
         info.buflen = strlen(info.buf);
-        result = write(sockfd, &info, sizeof(msg));
+        n = write(sockfd, &info, sizeof(msg));
     }
     infomsg(message, Info, sockfd, "查询完毕");
     mysql_free_result(result);
-    if (result == -1)
+    if (n == -1)
         return false;
     return true;
 }
@@ -265,10 +270,12 @@ bool queryhistoryfromgroup(msg message, int sockfd) {
             "select username,groupname,time,content from groupchat where "
             "groupname = \"%s\" order by time asc",
             message.target);
-    MYSQL_RES* result = query(sql);
+    MYSQL_RES* result;
+    result = query(sql);
     MYSQL_ROW sqlrow;
     int i;
-    int result = 0;
+    int n;
+    n = 0;
     while (sqlrow = mysql_fetch_row(result)) {
         strcpy(info.me, sqlrow[0]);
         info.melen = strlen(info.me);
@@ -278,11 +285,11 @@ bool queryhistoryfromgroup(msg message, int sockfd) {
         strcat(info.buf, " : ");
         strcat(info.buf, sqlrow[3]);
         info.buflen = strlen(info.buf);
-        result = write(sockfd, &info, sizeof(msg));
+        n = write(sockfd, &info, sizeof(msg));
     }
     mysql_free_result(result);
     infomsg(message, Info, sockfd, "查询完毕");
-    if (result == -1)
+    if (n == -1)
         return false;
     return true;
 }
@@ -292,15 +299,16 @@ bool queryhistoryfromgroup(msg message, int sockfd) {
  */
 bool addgroup(msg message, int sockfd) {
     char sql[200];
-    bool result;
+    bool n;
     //查询是否已有该群
     sprintf(sql, "select * from groupt where name = \"%s\"");
-    MYSQL_RES* result = query(sql);
+    MYSQL_RES* result;
+    result = query(sql);
     int rows = mysql_num_rows(result);
     mysql_free_result(result);
     if (rows != 0) {
-        result = infomsg(message, Info, sockfd, "该群已存在");
-        return result;
+        n = infomsg(message, Info, sockfd, "该群已存在");
+        return n;
     }
     //加群
     memset(sql, '\0', sizeof(sql));
@@ -315,15 +323,15 @@ bool addgroup(msg message, int sockfd) {
             message.me, message.target, "yes");
     if (update(sql) == EXIT_FAILURE)
         fprintf(STDERR_FILENO, "%s error\n", sql);
-    result = infomsg(message, Info, sockfd, "成功");
-    return result;
+    n = infomsg(message, Info, sockfd, "成功");
+    return n;
 }
 /**
  * 删群
  */
 bool deletegroup(msg message, int sockfd) {
     char sql[200];
-    bool result;
+    bool n;
     //查询是否为群主
     sprintf(sql,
             "select * from groupmember where username = \"%s\" and groupname = "
@@ -342,24 +350,25 @@ bool deletegroup(msg message, int sockfd) {
         sprintf(sql, "delete from groupt where name = \"%s\"", message.target);
         if (update(sql) == EXIT_FAILURE)
             fprintf(STDERR_FILENO, "%s error\n", sql);
-        result = infomsg(message, Info, sockfd, "删除成功");
+        n = infomsg(message, Info, sockfd, "删除成功");
     } else {
-        result = infomsg(message, Info, sockfd, "您非群主");
+        n = infomsg(message, Info, sockfd, "您非群主");
     }
-    return result;
+    return n;
 }
 /**
  * 加群
  */
 bool joingroup(msg message, int sockfd) {
     char sql[200];
-    bool result;
+    bool n;
     //查询是否已在组内
     sprintf(sql,
             "select * from groupmember where username = \"%s\" and groupname = "
             "\"%s\"",
             message.me, message.target);
-    MYSQL_RES* result = query(sql);
+    MYSQL_RES* result;
+    result = query(sql);
     int rows = mysql_num_rows(result);
     mysql_free_result(result);
     if (rows == 0) {
@@ -368,24 +377,25 @@ bool joingroup(msg message, int sockfd) {
                 "insert into groupmember(username,groupname,isadmin) values "
                 "(\"%s\",\"%s\",\"%s\")",
                 message.me, message.target, "np");
-        result = infomsg(message, Info, sockfd, "加群成功");
+        n = infomsg(message, Info, sockfd, "加群成功");
     } else {
-        result = infomsg(message, Info, sockfd, "已在群中");
+        n = infomsg(message, Info, sockfd, "已在群中");
     }
-    return result;
+    return n;
 }
 /**
  * 退群
  */
 bool quitgroup(msg message, int sockfd) {
     char sql[200];
-    bool result;
+    bool n;
     //查询是否已在组内
     sprintf(sql,
             "select * from groupmember where username = \"%s\" and groupname = "
             "\"%s\"",
             message.me, message.target);
-    MYSQL_RES* result = query(sql);
+    MYSQL_RES* result;
+    result = query(sql);
     int rows = mysql_num_rows(result);
     mysql_free_result(result);
     if (rows != 0) {
@@ -394,11 +404,11 @@ bool quitgroup(msg message, int sockfd) {
                 "delete from groupmember where username = \"%s\" and groupname "
                 "= \"%s\"",
                 message.me, message.target);
-        result = infomsg(message, Info, sockfd, "退群成功");
+        n = infomsg(message, Info, sockfd, "退群成功");
     } else {
-        result = infomsg(message, Info, sockfd, "不在群中");
+        n = infomsg(message, Info, sockfd, "不在群中");
     }
-    return result;
+    return n;
 }
 /**
  * 处理信息的总接口
