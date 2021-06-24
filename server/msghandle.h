@@ -248,6 +248,7 @@ bool queryhistoryfromuser(msg message, int sockfd) {
         info.buflen = strlen(info.buf);
         result = write(sockfd, &info, sizeof(msg));
     }
+    infomsg(message, Info, sockfd, "查询完毕");
     mysql_free_result(result);
     if (result == -1)
         return false;
@@ -280,6 +281,7 @@ bool queryhistoryfromgroup(msg message, int sockfd) {
         result = write(sockfd, &info, sizeof(msg));
     }
     mysql_free_result(result);
+    infomsg(message, Info, sockfd, "查询完毕");
     if (result == -1)
         return false;
     return true;
@@ -313,7 +315,7 @@ bool addgroup(msg message, int sockfd) {
             message.me, message.target, "yes");
     if (update(sql) == EXIT_FAILURE)
         fprintf(STDERR_FILENO, "%s error\n", sql);
-    result = infomsg(message, AddGroup, sockfd, "成功");
+    result = infomsg(message, Info, sockfd, "成功");
     return result;
 }
 /**
@@ -424,10 +426,10 @@ bool handle(msg message, int sockfd) {
         case SendToGroup:
             result = sendtogroup(message, sockfd);
             break;
-        case queryHistoryFromUser:
+        case QueryHistoryFromUser:
             result = queryhistoryfromuser(message, sockfd);
             break;
-        case queryHistoryFromGroup:
+        case QueryHistoryFromGroup:
             result = queryhistoryfromgroup(message, sockfd);
             break;
         case AddGroup:
