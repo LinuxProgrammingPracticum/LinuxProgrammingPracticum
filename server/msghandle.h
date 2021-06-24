@@ -26,7 +26,6 @@ bool deletesock(int sockfd) {
     sprintf(sql, "delete from sock where sock = \"%d\"", sockfd);
     return (update(sql));
 }
-
 /**
  * 从数据库查找已连接的用户sockfd
  * 参数：用户名
