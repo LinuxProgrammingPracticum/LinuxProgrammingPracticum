@@ -16,7 +16,6 @@
 
 #define IPADDRESS INADDR_ANY
 #define PORT 3456
-//#define MAXSIZE 2048
 #define LISTENQ 5
 #define FDSIZE 1000
 #define EPOLLEVENTS 100
