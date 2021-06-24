@@ -411,10 +411,10 @@ bool quitgroup(msg message, int sockfd) {
  */
 bool handle(msg message, int sockfd) {
     bool result;
-    if (findsockfd(message.me) == 0)
-        insertsock(sockfd, message.me);
     switch (message.command) {
         case Login:
+            if (findsockfd(message.me) == 0)
+                insertsock(sockfd, message.me);
             result = login(message, sockfd);
             break;
         case Register:
