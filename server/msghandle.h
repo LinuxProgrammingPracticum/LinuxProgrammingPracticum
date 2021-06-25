@@ -241,7 +241,7 @@ bool queryhistoryfromuser(msg message, int sockfd) {
     MYSQL_ROW sqlrow;
     int i;
     int n;
-    result = 0;
+    n = 0;
     while (sqlrow = mysql_fetch_row(result)) {
         strcpy(info.me, sqlrow[0]);
         info.melen = strlen(info.me);
