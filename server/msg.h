@@ -12,6 +12,10 @@
  * JoinGroup            ：加群
  * QuitGroup            ：退群
  * Info                 ：服务器发送消息或用户发送关闭连接
+ * AddFriend            ：添加好友
+ * DeleteFriend         ：删除好友
+ * QueryFriendList      ：查询好友列表
+ * QueryGroupList       ：查询群组列表
  */
 enum Type {
     Login,
@@ -25,6 +29,10 @@ enum Type {
     JoinGroup,
     QuitGroup,
     Info,
+    AddFriend,
+    DeleteFriend,
+    QueryFriendList,
+    QueryGroupList,
 };
 
 /**
