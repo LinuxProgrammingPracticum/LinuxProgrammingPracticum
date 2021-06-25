@@ -55,7 +55,8 @@ static void do_epoll(int listenfd) {
     struct epoll_event events[EPOLLEVENTS];
     int ret;
     msg* message;
-    memset(message, 0, sizeof(message));
+    message = (msg*)malloc(sizeof(msg));
+    memset(message, 0, sizeof(msg));
     //创建一个描述符
     epollfd = epoll_create(FDSIZE);
     //添加监听描述符事件
@@ -104,7 +105,7 @@ static void handle_accpet(int epollfd, int listenfd) {
 
 static void do_read(int epollfd, int fd, msg* message) {
     int nread;
-    nread = read(fd, message, sizeof(message));
+    nread = read(fd, message, sizeof(msg));
     if (nread == -1) {
         perror("read error:");
         close(fd);
@@ -130,10 +131,11 @@ static void do_write(int epollfd, int fd, msg* message) {
         delete_event(epollfd, fd, EPOLLOUT);
     } else
         modify_event(epollfd, fd, EPOLLIN);
-    memset(message, 0, sizeof(message));
+    memset(message, 0, sizeof(msg));
 }
 
 static void add_event(int epollfd, int fd, int state) {
+    //printf("get connection from %d\n", fd);
     struct epoll_event ev;
     ev.events = state;
     ev.data.fd = fd;

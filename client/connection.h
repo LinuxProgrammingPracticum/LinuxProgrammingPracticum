@@ -1,14 +1,15 @@
 #ifndef CONNECTION_H
 #define CONNECTION_H
 #include <arpa/inet.h>
-#include <msg.h>
 #include <netinet/in.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "msg.h"
 #define SERV_PORT 3456
 #define IPADDRESS "127.0.0.1"
 /**
@@ -25,6 +26,7 @@ int getconnection() {
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(SERV_PORT);
     inet_pton(AF_INET, IPADDRESS, &servaddr.sin_addr);
+    connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr));
     return sockfd;
 }
 /**
@@ -40,7 +42,7 @@ void closeconnection(int sockfd) {
  * 参数：类型、连接套接字、自身名称、目标名称、内容
  * 返回值：成功为true，错误为false
  */
-bool sendmsg(enum Type type,
+bool sendMsg(enum Type type,
              int sockfd,
              char* me,
              char* target,
@@ -71,7 +73,7 @@ void receivemsg(int sockfd, msg* message) {
  * 返回值：成功为true，错误为false
  */
 bool registe(int sockfd, char* username, char* password) {
-    return sendmsg(Register, sockfd, username, "server", password);
+    return sendMsg(Register, sockfd, username, "server", password);
 }
 /**
  * 登录
@@ -79,7 +81,7 @@ bool registe(int sockfd, char* username, char* password) {
  * 返回值：成功为true，错误为false
  */
 bool login(int sockfd, char* username, char* password) {
-    return sendmsg(Login, sockfd, username, "server", password);
+    return sendMsg(Login, sockfd, username, "server", password);
 }
 /**
  * 私聊
@@ -87,7 +89,7 @@ bool login(int sockfd, char* username, char* password) {
  * 返回值：成功为true，错误为false
  */
 bool sendtouser(int sockfd, char* username, char* targetname, char* content) {
-    return sendmsg(SendToUser, sockfd, username, targetname, content);
+    return sendMsg(SendToUser, sockfd, username, targetname, content);
 }
 /**
  * 群聊
@@ -95,7 +97,7 @@ bool sendtouser(int sockfd, char* username, char* targetname, char* content) {
  * 返回值：成功为true，错误为false
  */
 bool sendtogroup(int sockfd, char* username, char* targetname, char* content) {
-    return sendmsg(SendToGroup, sockfd, username, targetname, content);
+    return sendMsg(SendToGroup, sockfd, username, targetname, content);
 }
 /**
  * 建群
@@ -103,7 +105,7 @@ bool sendtogroup(int sockfd, char* username, char* targetname, char* content) {
  * 返回值：成功为true，错误为false
  */
 bool addgroup(int sockfd, char* username, char* targetname) {
-    return sendmsg(AddGroup, sockfd, username, targetname, "");
+    return sendMsg(AddGroup, sockfd, username, targetname, "");
 }
 /**
  * 删群
@@ -111,7 +113,7 @@ bool addgroup(int sockfd, char* username, char* targetname) {
  * 返回值：成功为true，错误为false
  */
 bool deletegroup(int sockfd, char* username, char* targetname) {
-    return sendmsg(DeleteGroup, sockfd, username, targetname, "");
+    return sendMsg(DeleteGroup, sockfd, username, targetname, "");
 }
 /**
  * 加群
@@ -119,7 +121,7 @@ bool deletegroup(int sockfd, char* username, char* targetname) {
  * 返回值：成功为true，错误为false
  */
 bool joingroup(int sockfd, char* username, char* targetname) {
-    return sendmsg(JoinGroup, sockfd, username, targetname, "");
+    return sendMsg(JoinGroup, sockfd, username, targetname, "");
 }
 /**
  * 退群
@@ -127,7 +129,7 @@ bool joingroup(int sockfd, char* username, char* targetname) {
  * 返回值：成功为true，错误为false
  */
 bool quitgroup(int sockfd, char* username, char* targetname) {
-    return sendmsg(QuitGroup, sockfd, username, targetname, "");
+    return sendMsg(QuitGroup, sockfd, username, targetname, "");
 }
 /**
  * 查询用户聊天历史信息
@@ -135,7 +137,7 @@ bool quitgroup(int sockfd, char* username, char* targetname) {
  * 返回值：成功为true，错误为false
  */
 bool queryhistoryfromuser(int sockfd, char* username, char* targetname) {
-    return sendmsg(QueryHistoryFromUser, sockfd, username, targetname, "");
+    return sendMsg(QueryHistoryFromUser, sockfd, username, targetname, "");
 }
 /**
  * 查询群组聊天历史信息
@@ -143,6 +145,6 @@ bool queryhistoryfromuser(int sockfd, char* username, char* targetname) {
  * 返回值：成功为true，错误为false
  */
 bool queryhistoryfromgroup(int sockfd, char* username, char* targetname) {
-    return sendmsg(QueryHistoryFromGroup, sockfd, username, targetname, "");
+    return sendMsg(QueryHistoryFromGroup, sockfd, username, targetname, "");
 }
 #endif
