@@ -577,6 +577,18 @@ bool handle(msg message, int sockfd) {
         case QuitGroup:
             result = quitgroup(message, sockfd);
             break;
+        case AddFriend:
+            result = addfriend(message, sockfd);
+            break;
+        case DeleteFriend:
+            result = deletefriend(message, sockfd);
+            break;
+        case QueryFriendList:
+            result = queryfriendlist(message, sockfd);
+            break;
+        case QueryGroupList:
+            result = querygrouplist(message, sockfd);
+            break;
     }
     return result;
 }
