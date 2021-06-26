@@ -314,7 +314,7 @@ bool addgroup(msg message, int sockfd) {
     memset(sql, '\0', sizeof(sql));
     sprintf(sql, "insert into groupt (name) values(\"%s\")", message.target);
     if (update(sql) == EXIT_FAILURE)
-        fprintf(STDERR_FILENO, "%s error\n", sql);
+        dprintf(STDERR_FILENO, "%s error\n", sql);
     //加群主
     memset(sql, '\0', sizeof(sql));
     sprintf(sql,
@@ -322,7 +322,7 @@ bool addgroup(msg message, int sockfd) {
             "(\"%s\",\"%s\",\"%s\");",
             message.me, message.target, "yes");
     if (update(sql) == EXIT_FAILURE)
-        fprintf(STDERR_FILENO, "%s error\n", sql);
+        dprintf(STDERR_FILENO, "%s error\n", sql);
     n = infomsg(message, Info, sockfd, "成功");
     return n;
 }
@@ -345,11 +345,11 @@ bool deletegroup(msg message, int sockfd) {
         sprintf(sql, "delete from groupmember where groupname = \"%s\"",
                 message.target);
         if (update(sql) == EXIT_FAILURE)
-            fprintf(STDERR_FILENO, "%s error\n", sql);
+            dprintf(STDERR_FILENO, "%s error\n", sql);
         memset(sql, '\0', sizeof(sql));
         sprintf(sql, "delete from groupt where name = \"%s\"", message.target);
         if (update(sql) == EXIT_FAILURE)
-            fprintf(STDERR_FILENO, "%s error\n", sql);
+            dprintf(STDERR_FILENO, "%s error\n", sql);
         n = infomsg(message, Info, sockfd, "删除成功");
     } else {
         n = infomsg(message, Info, sockfd, "您非群主");
@@ -409,6 +409,129 @@ bool quitgroup(msg message, int sockfd) {
         n = infomsg(message, Info, sockfd, "不在群中");
     }
     return n;
+}
+/**
+ * 加好友
+ */
+bool addfriend(msg message, int sockfd) {
+    char sql[200];
+    sprintf(
+        sql,
+        "select * from frient where username = \"%s\" and targetname = \"%s\"",
+        message.me, message.target);
+    MYSQL_RES* result = query(sql);
+    if (result == NULL) {
+        infomsg(message, Info, sockfd, "error");
+        return false;
+    }
+    int rows = mysql_num_rows(result);
+    mysql_free_result(result);
+    if (rows == 0) {
+        memset(sql, 0, sizeof(sql));
+        sprintf(sql,
+                "insert into friend(username,targetname)values(\"%s\",\"%s\")",
+                message.me, message.target);
+        if (update(sql) == EXIT_FAILURE) {
+            infomsg(message, Info, sockfd, "数据库更新出错");
+            return false;
+        }
+        memset(sql, 0, sizeof(sql));
+        sprintf(sql,
+                "insert into friend(username,targetname)values(\"%s\",\"%s\")",
+                message.target, message.me);
+        if (update(sql) == EXIT_FAILURE) {
+            infomsg(message, Info, sockfd, "数据库更新出错");
+            return false;
+        }
+        infomsg(message, message.command, sockfd, "添加好友成功");
+        return true;
+    } else {
+        infomsg(message, Info, sockfd, "已为好友");
+        return true;
+    }
+}
+/**
+ * 删除好友
+ */
+bool deletefriend(msg message, int sockfd) {
+    char sql[200];
+    sprintf(
+        sql,
+        "select * from frient where username = \"%s\" and targetname = \"%s\"",
+        message.me, message.target);
+    MYSQL_RES* result = query(sql);
+    if (result == NULL) {
+        infomsg(message, Info, sockfd, "error");
+        return false;
+    }
+    int rows = mysql_num_rows(result);
+    mysql_free_result(result);
+    if (rows == 0) {
+        infomsg(message, Info, sockfd, "不是好友");
+        return true;
+    } else {
+        memset(sql, 0, sizeof(sql));
+        sprintf(sql,
+                "delete from friend where username = \"%s\" and targetname = "
+                "\"%s\'",
+                message.me, message.target);
+        if (update(sql) == EXIT_FAILURE) {
+            infomsg(message, Info, sockfd, "数据库更新出错");
+            return false;
+        }
+        memset(sql, 0, sizeof(sql));
+        sprintf(sql,
+                "insert into friend(username,targetname)values(\"%s\",\"%s\")",
+                message.target, message.me);
+        if (update(sql) == EXIT_FAILURE) {
+            infomsg(message, Info, sockfd, "数据库更新出错");
+            return false;
+        }
+        infomsg(message, message.command, sockfd, "删除好友成功");
+        return true;
+    }
+}
+/**
+ * 查询好友列表
+ */
+bool queryfriendlist(msg message, int sockfd) {
+    char sql[200];
+    sprintf("select tagertname from friend where username = \"%s\"",
+            message.me);
+    MYSQL_RES* result = query(sql);
+    if (result == NULL) {
+        infomsg(message, Info, sockfd, "数据库查询出错");
+        return false;
+    }
+    MYSQL_ROW sqlrow;
+    int i;
+    while (sqlrow = mysql_fetch_row(result)) {
+        infomsg(message, message.command, sockfd, sqlrow[0]);
+    }
+    mysql_free_result(result);
+    infomsg(message, Info, sockfd, "查询完毕");
+    return true;
+}
+/**
+ * 查询群组列表
+ */
+bool querygrouplist(msg message, int sockfd) {
+    char sql[200];
+    sprintf("select groupname from groupmember where username = \"%s\"",
+            message.me);
+    MYSQL_RES* result = query(sql);
+    if (result == NULL) {
+        infomsg(message, Info, sockfd, "数据库查询出错");
+        return false;
+    }
+    MYSQL_ROW sqlrow;
+    int i;
+    while (sqlrow = mysql_fetch_row(result)) {
+        infomsg(message, message.command, sockfd, sqlrow[0]);
+    }
+    mysql_free_result(result);
+    infomsg(message, Info, sockfd, "查询完毕");
+    return true;
 }
 /**
  * 处理信息的总接口
