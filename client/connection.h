@@ -147,4 +147,36 @@ bool queryhistoryfromuser(int sockfd, char* username, char* targetname) {
 bool queryhistoryfromgroup(int sockfd, char* username, char* targetname) {
     return sendMsg(QueryHistoryFromGroup, sockfd, username, targetname, "");
 }
+/**
+ * 添加好友
+ * 参数：连接套接字，用户名，好友用户名
+ * 返回值：成功为true，错误为false
+ */
+bool addfriend(int sockfd, char* username, char* targetname) {
+    return sendMsg(AddFriend, sockfd, username, targetname, "");
+}
+/**
+ * 删除好友
+ * 参数：连接套接字，用户名，好友用户名
+ * 返回值：成功为true，错误为false
+ */
+bool deletefriend(int sockfd, char* username, char* targetname) {
+    return sendMsg(DeleteFriend, sockfd, username, targetname, "");
+}
+/**
+ * 查询好友列表
+ * 参数：连接套接字，用户名
+ * 返回值：成功为true，错误为false
+ */
+bool queryfriendlist(int sockfd, char* username) {
+    return sendMsg(QueryFriendList, sockfd, username, "", "");
+}
+/**
+ * 查询群组列表
+ * 参数：连接套接字，用户名
+ * 返回值：成功为true，错误为false
+ */
+bool querygrouplist(int sockfd, char* username) {
+    return sendMsg(QueryGroupList, sockfd, username, "", "");
+}
 #endif
