@@ -496,7 +496,7 @@ bool deletefriend(msg message, int sockfd) {
  */
 bool queryfriendlist(msg message, int sockfd) {
     char sql[200];
-    sprintf("select tagertname from friend where username = \"%s\"",
+    sprintf(sql,"select tagertname from friend where username = \"%s\"",
             message.me);
     MYSQL_RES* result = query(sql);
     if (result == NULL) {
@@ -517,7 +517,7 @@ bool queryfriendlist(msg message, int sockfd) {
  */
 bool querygrouplist(msg message, int sockfd) {
     char sql[200];
-    sprintf("select groupname from groupmember where username = \"%s\"",
+    sprintf(sql,"select groupname from groupmember where username = \"%s\"",
             message.me);
     MYSQL_RES* result = query(sql);
     if (result == NULL) {
