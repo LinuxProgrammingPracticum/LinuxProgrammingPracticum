@@ -18,43 +18,51 @@ enum{
 typedef struct _treeitem TreeItem;
 struct _treeitem{
     gint id;
-    const gchar *text;
+    gchar text[2048];
 };
 /* 一些全局变量 */
-const char *password = "passwd";
-static GtkWidget *fwindow = NULL;
+gchar title[50] = "聊天窗口";
+static GtkWidget *fwindow = NULL; //主窗口
+static GtkWidget *dwindow = NULL; //对话窗口
 static GtkWidget *text;
 static GtkTextBuffer *buffer;
 static GtkWidget *message_entry;
 static GtkWidget *username_entry,*password_entry,*check_password_entry;
-gboolean islogined = FALSE;
 gint sd;
-gchar target[20],me[20],buf[2048];//目标，用户，内容 
+gchar target[20],me[20];//目标，用户，内容 
 msg msgdata;
 
-/* 测试数据 */
-TreeItem group[] = {{1,"群1"}};
-TreeItem member[] = {{1,"好友1"},{2,"好友2"}};
+/* 群组和用户数据 */
+TreeItem group[20];
+TreeItem member[20];
 /* 一些功能函数 */
 void closeApp(GtkWidget *window, gpointer data); //关闭应用
 void login_button_clicked(GtkWidget *button, gpointer data);  //登录按键功能函数
 void signin_button_clicked(GtkWidget *button, gpointer data); //注册按键功能函数
 void signin_button_click(GtkWidget *button, gpointer data);
 void showWin(GtkWidget *window);    //显示窗口
-void msendmsg(GtkWidget *window, gpointer data);  //发送信息
-void get_message(void);   //从服务器获取信息
+// void msendmsg(GtkWidget *window, gpointer data);  //发送信息
+// void get_message(void);   //从服务器获取信息
 void returnApp(GtkWidget *window, gpointer data);  //返回登陆界面
 void tree_selection_changed(GtkTreeSelection *selection, gpointer data); //选项功能控件
-void query_list(msg *mdata, gint func);  // 查询用户或群组,func=1表示查询群组,func=2表示查询用户
-void chat_with_target(gpointer data);   // 与用户或群组进行交流
-void delete_target(gpointer data);   // 删除用户或群组
+int query_list(gint func);  // 查询用户或群组,func=1表示查询群组,func=2表示查询用户
+void chat_with_group(gpointer data);   // 与群组进行交流
+void chat_with_user(gpointer data);   // 与用户进行交流
+void delete_group(gpointer data);   // 删除群组
+void quit_group(gpointer data);   //退出群组
+void delete_user(gpointer data);   // 删除用户
+void Creategroup(gpointer data);   // 创建群聊
+void Searchgroup(gpointer data);   // 搜索群聊
+void grouphistory(void);  // 群组历史消息
+void userhistory(void);  // 用户历史消息
 GtkWidget *CreateMenuItem(GtkWidget *MenuBar,char *test);  // 创建目录项
 GtkWidget *CreateMenu(GtkWidget *MenuItem);   // 创建目录条
 GtkWidget *login_win(GtkWidget *window);  // 登录窗口
 GtkWidget *main_win(GtkWidget *window);   // 主窗口
-GtkWidget *createTreeView(GtkWidget *treeview,TreeItem *t,gint length); // 创建一个树形列表
-GtkWidget *msgDialog(char *data); // 询问与当前点击项目有关的信息
+GtkWidget *createTreeView(GtkWidget *treeview,TreeItem *t,gint length,gint type); // 创建一个树形列表
+GtkWidget *msgDialog(char *data,gint type); // 询问与当前点击项目有关的信息
 void *ansDialog(char *data); // 显示从服务器返回的信息
+
 /* 注册界面以及相关操作 */
 GtkWidget *signin_win(GtkWidget *window){
     GtkWidget *username_label;
@@ -187,11 +195,11 @@ void login_button_clicked(GtkWidget *window, gpointer data){
             memset(me,0,sizeof(gchar));
             strcpy(me,username_text);
             gtk_widget_destroy(data);
-            gdk_threads_enter();
-            islogined = TRUE;
+            // gdk_threads_enter();
+            // islogined = TRUE;
             fwindow = main_win(fwindow);
             showWin(fwindow);
-            gdk_threads_leave();
+            // gdk_threads_leave();
         }else{
             printf("Access denied!\n");
             ansDialog(msgdata.buf);
@@ -218,10 +226,11 @@ GtkWidget *main_win(GtkWidget *window){
     GtkWidget *menuQuit,*menuChange;
     GtkWidget *view;
     GtkWidget *treeView1,*treeView2;
+    int length;
     /*
         main window
     */
-    char *title = "聊天窗口";
+    // title = "聊天窗口";
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(window,title);
     gtk_window_set_default_size(window,700,550);
@@ -295,7 +304,8 @@ GtkWidget *main_win(GtkWidget *window){
     frame2 = gtk_frame_new("您的群组：");
     gtk_box_pack_start(vbox2,frame2,FALSE,FALSE,5);
     gtk_widget_set_size_request(frame2,200,250);
-    treeView1 = createTreeView(treeView1,group,sizeof(group)/sizeof(group[0]));
+    length = query_list(1);
+    treeView1 = createTreeView(treeView1,group,length,1);
     gtk_container_add(frame2,treeView1);
     /*
         friends frame
@@ -303,7 +313,8 @@ GtkWidget *main_win(GtkWidget *window){
     frame3 = gtk_frame_new("您的好友：");
     gtk_box_pack_start(vbox2,frame3,FALSE,FALSE,5);
     gtk_widget_set_size_request(frame3,200,250);
-    treeView2 = createTreeView(treeView2,member,sizeof(member)/sizeof(member[0]));
+    length = query_list(2);
+    treeView2 = createTreeView(treeView2,member,length,2);
     gtk_container_add(frame3,treeView2);
     /* Generak purpose modle */
     if (!gtk_widget_get_visible (window)){
@@ -316,37 +327,14 @@ GtkWidget *main_win(GtkWidget *window){
 void showWin(GtkWidget *window){
     gtk_init(NULL,NULL);
     gtk_widget_show(window);
-    gdk_threads_enter();
+    gtk_widget_show_all(window);
     gtk_main();
-    gdk_threads_leave();
 }
 void closeApp(GtkWidget *window, gpointer data){
     if(data != NULL){
         gtk_widget_destroy(data);
     }else{
         gtk_main_quit();
-    }
-}
-
-void msendmsg(GtkWidget *window, gpointer data){
-    const char *message;
-    if(islogined == FALSE) return ;
-    message = gtk_entry_get_text(message_entry);
-    sprintf(buf,"%s\n",message);
-    write(sd,buf,1024);
-    gtk_entry_set_text(message_entry,"");
-}
-void get_message(void){
-    GtkTextIter iter;
-    gchar get_buf[1024];
-    gchar buf[1024];
-    while(read(sd,buf,1024) != -1){
-        sprintf(get_buf,"%s",buf);
-        gdk_threads_enter();    //进入 
-        gtk_text_buffer_get_end_iter(buffer,&iter);
-        gtk_text_buffer_insert(buffer,&iter,get_buf,-1);    //插入数据
-
-        gdk_threads_leave(); //离开
     }
 }
 void returnApp(GtkWidget *window, gpointer data){
@@ -358,18 +346,19 @@ GtkWidget *CreateMenuItem(GtkWidget *MenuBar,char *test){
     GtkWidget *MenuItem;
     MenuItem = gtk_menu_item_new_with_label(test);
     gtk_menu_shell_append(MenuBar,MenuItem);
-    // gtk_widget_show(MenuItem);
     return MenuItem;
 }
 GtkWidget *CreateMenu(GtkWidget *MenuItem){
     GtkWidget *Menu;
-    GtkWidget *exit,*change;
+    GtkWidget *exit,*creategroup,*searchgroup;
     Menu = gtk_menu_new();
     exit = CreateMenuItem(Menu,"退出登录");
+    creategroup = CreateMenuItem(Menu,"创建群聊");
+    searchgroup = CreateMenuItem(Menu,"搜索群聊");
     g_signal_connect(exit,"activate",returnApp,fwindow);
     gtk_menu_item_set_submenu(MenuItem,Menu);
 }
-GtkWidget *createTreeView(GtkWidget *treeview,TreeItem t[],gint length){
+GtkWidget *createTreeView(GtkWidget *treeview,TreeItem t[],gint length,gint type){
     GtkListStore *store;
     GtkTreeIter *iter;
     GtkCellRenderer *renderer;
@@ -400,7 +389,7 @@ GtkWidget *createTreeView(GtkWidget *treeview,TreeItem t[],gint length){
     gtk_tree_view_append_column(treeview,column);
     select = gtk_tree_view_get_selection(treeview);
     gtk_tree_selection_set_mode(select,GTK_SELECTION_BROWSE);
-    g_signal_connect(select,"changed",tree_selection_changed,NULL);
+    g_signal_connect(select,"changed",tree_selection_changed,type);
     return treeview;
 }
 void tree_selection_changed(GtkTreeSelection *selection, gpointer data){
@@ -411,13 +400,13 @@ void tree_selection_changed(GtkTreeSelection *selection, gpointer data){
     if(gtk_tree_selection_get_selected(selection,&model,&iter)){
         gtk_tree_model_get(model,&iter,TEXT_COLUMN,&title,-1);
         printf("你选择了:%s\n",title);
-        fwindow = msgDialog(title);
+        fwindow = msgDialog(title,data);
         showWin(fwindow);
         g_free(title);
     }
 }
 
-GtkWidget *msgDialog(char *data){
+GtkWidget *msgDialog(char *data,gint type){
     GtkWidget *window;
     GtkWidget *hbox1,*hbox2,*vbox;
     GtkWidget *btn1,*btn2;
@@ -434,9 +423,19 @@ GtkWidget *msgDialog(char *data){
     hbox2 = gtk_hbox_new(TRUE,5);
     btn1 = gtk_button_new_with_label("聊天");
     printf("%s\n",me);
-    // g_signal_connect();
+    memset(target,0,sizeof(gchar));
+    strcpy(target,data);
+    if(type == 1){
+        g_signal_connect(btn1,"clicked",chat_with_group,window);
+    }else if(type == 2){
+        g_signal_connect(btn1,"clicked",chat_with_user,window);
+    }
     btn2 = gtk_button_new_with_label("删除");
-    // g_signal_connect();
+    if(type == 1){
+        g_signal_connect(btn2,"clicked",delete_group,NULL);
+    }else if(type == 2){
+        g_signal_connect(btn2,"clicked",delete_user,NULL);
+    }
     gchar str1[100] = "请选择您要对";
     gchar *str2 = "的操作";
     strcat(str1,data);
@@ -446,6 +445,12 @@ GtkWidget *msgDialog(char *data){
     gtk_box_pack_start(hbox1,label,TRUE,FALSE,5);
     gtk_box_pack_start(hbox2,btn1,TRUE,FALSE,5);
     gtk_box_pack_start(hbox2,btn2,TRUE,FALSE,5);
+    if(type == 1){
+        GtkWidget *btn3;
+        btn3 = gtk_button_new_with_label("退群");
+        g_signal_connect(btn3,"clicked",quit_group,NULL);
+        gtk_box_pack_start(hbox2,btn3,TRUE,FALSE,5);
+    }
     gtk_box_pack_start(vbox,hbox1,FALSE,FALSE,5);
     gtk_box_pack_start(vbox,hbox2,FALSE,FALSE,5);
     gtk_container_add(window,vbox);
@@ -456,7 +461,82 @@ GtkWidget *msgDialog(char *data){
         gtk_widget_destroy (window);
     return window;
 }
-
+void grouphistory(void){ // 群组历史消息
+    GtkTextIter iter;
+    gchar get_buf[2048];
+    while(queryhistoryfromgroup(sd,me,target)){
+        receivemsg(sd,&msgdata);
+        sprintf(get_buf,"%s",msgdata.buf);
+        gdk_threads_enter();
+        gtk_text_buffer_get_end_iter(buffer,&iter);
+        gtk_text_buffer_insert(buffer,&iter,get_buf,-1);
+        gdk_threads_leave();
+    }
+}
+void userhistory(void){  // 用户历史消息
+    GtkTextIter iter;
+    gchar get_buf[2048];
+    while(queryhistoryfromuser(sd,me,target)){
+        receivemsg(sd,&msgdata);
+        sprintf(get_buf,"%s",msgdata.buf);
+        gdk_threads_enter();
+        gtk_text_buffer_get_end_iter(buffer,&iter);
+        gtk_text_buffer_insert(buffer,&iter,get_buf,-1);
+        gdk_threads_leave();
+    }
+}
+void chat_with_group(gpointer data){   // 与群组进行交流
+    gtk_widget_destroy(data);
+    memset(title,0,sizeof(char*));
+    strcat(title,"在群");
+    strcat(title,target);
+    strcat(title,"内进行聊天");
+    fwindow = main_win(fwindow);
+    showWin(fwindow);
+    g_thread_create((GThreadFunc)grouphistory,NULL,FALSE,NULL);
+    gchar *message = gtk_entry_get_text(message_entry);
+    if(sendtogroup(sd,me,target,message)){
+        gtk_entry_set_text(message_entry,"");
+    }
+}
+void chat_with_user(gpointer data){   // 与用户进行交流
+    gtk_widget_destroy(data);
+    memset(title,0,sizeof(char*));
+    strcat(title,"与");
+    strcat(title,target);
+    strcat(title,"进行聊天");
+    fwindow = main_win(fwindow);
+    showWin(fwindow);
+    g_thread_create((GThreadFunc)userhistory,NULL,FALSE,NULL);
+    gchar *message = gtk_entry_get_text(message_entry);
+    if(sendtouser(sd,me,target,message)){
+        gtk_entry_set_text(message_entry,"");
+    }
+}
+void delete_group(gpointer data){   // 删除或退出群组
+    if(deletegroup(sd,me,target)){
+        receivemsg(sd,&msgdata);
+    }else{
+        receivemsg(sd,&msgdata);
+    }
+    ansDialog(msgdata.buf);
+}
+void quit_group(gpointer data){    //退出群组
+    if(quitgroup(sd,me,target)){
+        receivemsg(sd,&msgdata); 
+    }else{
+        receivemsg(sd,&msgdata);
+    }
+    ansDialog(msgdata.buf);
+}
+void delete_user(gpointer data){   // 删除用户
+    if(deletefriend(sd,me,target)){
+        receivemsg(sd,&msgdata);
+    }else{
+        receivemsg(sd,&msgdata);
+    }
+    ansDialog(msgdata.buf);
+}
 void *ansDialog(char *data){
     GtkWidget *window;
     GtkWidget *label;
@@ -483,18 +563,45 @@ void *ansDialog(char *data){
     showWin(window);
 }
 /* 查询群组或者用户列表 */
-void query_list(msg *mdata, gint func){
+int query_list(gint func){
+    int i;
     switch(func){
-        case 1:querygrouplist(sd,me);
+        case 1:
+            if(querygrouplist(sd,me)){
+                i = 0;
+                receivemsg(sd,&msgdata);
+                while(msgdata.command != Info){
+                    group[i].id = i + 1;
+                    strcpy(group[i].text,msgdata.buf);
+                    i++;
+                    receivemsg(sd,&msgdata);
+                }
+            }
             break;
-        case 2:queryfriendlist(sd,me);
-            break;
-
-            
+        case 2:
+            if(queryfriendlist(sd,me)){
+                i = 0;
+                receivemsg(sd,&msgdata);
+                while(msgdata.command != Info){
+                    member[i].id = i + 1;
+                    strcpy(member[i].text,msgdata.buf); 
+                    i++;
+                    receivemsg(sd,&msgdata);
+                }
+            }
+            break;   
     }
+    return i;
 }
 int main(){
+    if(!g_thread_supported()){
+        g_thread_init(NULL);
+    }
     sd = getconnection();
+    memset(me,0,sizeof(me));
+    memset(target,0,sizeof(target));
+    memset(member,0,sizeof(member));
+    memset(group,0,sizeof(group));
     fwindow = login_win(fwindow);
     showWin(fwindow);
 }
