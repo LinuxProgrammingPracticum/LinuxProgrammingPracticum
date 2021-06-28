@@ -377,6 +377,8 @@ bool joingroup(msg message, int sockfd) {
                 "insert into groupmember(username,groupname,isadmin) values "
                 "(\"%s\",\"%s\",\"%s\")",
                 message.me, message.target, "np");
+        if (update(sql) == EXIT_FAILURE)
+            dprintf(STDERR_FILENO, "%s error\n", sql);
         n = infomsg(message, Info, sockfd, "加群成功");
     } else {
         n = infomsg(message, Info, sockfd, "已在群中");
@@ -404,6 +406,8 @@ bool quitgroup(msg message, int sockfd) {
                 "delete from groupmember where username = \"%s\" and groupname "
                 "= \"%s\"",
                 message.me, message.target);
+        if (update(sql) == EXIT_FAILURE)
+            dprintf(STDERR_FILENO, "%s error\n", sql);
         n = infomsg(message, Info, sockfd, "退群成功");
     } else {
         n = infomsg(message, Info, sockfd, "不在群中");
@@ -496,7 +500,7 @@ bool deletefriend(msg message, int sockfd) {
  */
 bool queryfriendlist(msg message, int sockfd) {
     char sql[200];
-    sprintf(sql,"select targetname from friend where username = \"%s\"",
+    sprintf(sql, "select targetname from friend where username = \"%s\"",
             message.me);
     MYSQL_RES* result = query(sql);
     if (result == NULL) {
@@ -517,7 +521,7 @@ bool queryfriendlist(msg message, int sockfd) {
  */
 bool querygrouplist(msg message, int sockfd) {
     char sql[200];
-    sprintf(sql,"select groupname from groupmember where username = \"%s\"",
+    sprintf(sql, "select groupname from groupmember where username = \"%s\"",
             message.me);
     MYSQL_RES* result = query(sql);
     if (result == NULL) {
