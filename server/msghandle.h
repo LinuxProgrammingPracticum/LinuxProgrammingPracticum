@@ -485,7 +485,8 @@ bool deletefriend(msg message, int sockfd) {
         }
         memset(sql, 0, sizeof(sql));
         sprintf(sql,
-                "insert into friend(username,targetname)values(\"%s\",\"%s\")",
+                "delete from friend where username = \"%s\" and targetname = "
+                "\"%s\'",
                 message.target, message.me);
         if (update(sql) == EXIT_FAILURE) {
             infomsg(message, Info, sockfd, "数据库更新出错");
