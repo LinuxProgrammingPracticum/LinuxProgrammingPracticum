@@ -14,7 +14,6 @@
 #include <unistd.h>
 #include "msghandle.h"
 
-#define IPADDRESS "127.0.0.1"
 #define PORT 3456
 #define LISTENQ 5
 #define FDSIZE 1000

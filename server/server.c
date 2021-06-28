@@ -1,7 +1,7 @@
 #include "server.h"
 //函数声明
 //创建套接字并进行绑定
-static int socket_bind(const char* ip, int port);
+static int socket_bind(int port);
 // IO多路复用epoll
 static void do_epoll(int listenfd);
 //事件处理函数
@@ -25,13 +25,13 @@ static void delete_event(int epollfd, int fd, int state);
 
 int main(int argc, char* argv[]) {
     int listenfd;
-    listenfd = socket_bind(IPADDRESS, PORT);
+    listenfd = socket_bind(PORT);
     listen(listenfd, LISTENQ);
     do_epoll(listenfd);
     return 0;
 }
 
-static int socket_bind(const char* ip, int port) {
+static int socket_bind(int port) {
     int listenfd;
     struct sockaddr_in servaddr;
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -41,7 +41,7 @@ static int socket_bind(const char* ip, int port) {
     }
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
-    inet_pton(AF_INET, ip, &servaddr.sin_addr);
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr.sin_port = htons(port);
     if (bind(listenfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) == -1) {
         perror("bind error: ");
@@ -135,7 +135,7 @@ static void do_write(int epollfd, int fd, msg* message) {
 }
 
 static void add_event(int epollfd, int fd, int state) {
-    //printf("get connection from %d\n", fd);
+    // printf("get connection from %d\n", fd);
     struct epoll_event ev;
     ev.events = state;
     ev.data.fd = fd;
