@@ -11,13 +11,12 @@
 #include <unistd.h>
 #include "msg.h"
 #define SERV_PORT 3456
-#define IPADDRESS "127.0.0.1"
 /**
  * 获得连接
- * 参数： 无
+ * 参数： IP地址
  * 返回值：连接套接字
  */
-int getconnection() {
+int getconnection(char * ipaddress) {
     int sockfd;
     struct sockaddr_in servaddr;
     msg* message;
@@ -25,7 +24,7 @@ int getconnection() {
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(SERV_PORT);
-    inet_pton(AF_INET, IPADDRESS, &servaddr.sin_addr);
+    inet_pton(AF_INET, ipaddress, &servaddr.sin_addr);
     connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr));
     return sockfd;
 }
