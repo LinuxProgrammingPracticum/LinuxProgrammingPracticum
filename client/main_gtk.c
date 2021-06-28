@@ -470,7 +470,7 @@ void change(GtkWidget *window, gpointer data){
             break;
         case 2:
             kind = 2;
-            break;
+            break; 
     }
 }
 void Search(GtkWidget *button, gpointer data){
