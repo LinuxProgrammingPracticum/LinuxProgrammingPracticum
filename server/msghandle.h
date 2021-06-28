@@ -441,7 +441,7 @@ bool addfriend(msg message, int sockfd) {
         }
         memset(sql, 0, sizeof(sql));
         sprintf(sql,
-                "insert into friend(username,targetname)values(\"%s\",\"%s\")",
+                "insert into friend(username,targetname) values(\"%s\",\"%s\")",
                 message.target, message.me);
         if (update(sql) == EXIT_FAILURE) {
             infomsg(message, Info, sockfd, "数据库更新出错");
