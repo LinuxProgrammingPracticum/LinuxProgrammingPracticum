@@ -593,11 +593,15 @@ int query_list(gint func){
     }
     return i;
 }
-int main(){
+int main(int argc,char * argv[]){
+    if (argc != 2){
+        printf("please input ./client <IPADDRESS>\n");
+        return EXIT_SUCCESS;
+    }
     if(!g_thread_supported()){
         g_thread_init(NULL);
     }
-    sd = getconnection();
+    sd = getconnection(argv[1]);
     memset(me,0,sizeof(me));
     memset(target,0,sizeof(target));
     memset(member,0,sizeof(member));
