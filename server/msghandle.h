@@ -421,7 +421,7 @@ bool addfriend(msg message, int sockfd) {
     char sql[200];
     sprintf(
         sql,
-        "select * from frient where username = \"%s\" and targetname = \"%s\"",
+        "select * from friend where username = \"%s\" and targetname = \"%s\"",
         message.me, message.target);
     MYSQL_RES* result = query(sql);
     if (result == NULL) {
