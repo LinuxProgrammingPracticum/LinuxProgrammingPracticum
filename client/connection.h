@@ -16,7 +16,7 @@
  * 参数： IP地址
  * 返回值：连接套接字
  */
-int getconnection(char * ipaddress) {
+int getconnection(char* ipaddress) {
     int sockfd;
     struct sockaddr_in servaddr;
     msg* message;
@@ -25,7 +25,8 @@ int getconnection(char * ipaddress) {
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(SERV_PORT);
     inet_pton(AF_INET, ipaddress, &servaddr.sin_addr);
-    connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr));
+    if (connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) == -1)
+        return EXIT_FAILURE;
     return sockfd;
 }
 /**
