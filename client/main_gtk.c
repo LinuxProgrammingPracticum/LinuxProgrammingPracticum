@@ -224,6 +224,10 @@ void login_button_clicked(GtkWidget *button, gpointer data){
             memset(title,0,sizeof(gchar));
             sprintf(title,"%s",me);
             strcat(title,",欢迎您");
+            if(queryunheard(sd,me)){
+                receivemsg(sd,&msgdata);
+                ansDialog(msgdata.buf);
+            }
             gtk_widget_destroy(data);
             fwindow = main_win(fwindow);
             showWin(fwindow);
@@ -321,7 +325,7 @@ GtkWidget *CreateMenu(GtkWidget *MenuItem){
     GtkWidget *Menu;
     GtkWidget *exit,*creategroup,*searchgroup;
     Menu = gtk_menu_new();
-    exit = CreateMenuItem(Menu,"退出登录");
+    exit = CreateMenuItem(Menu,"退出");
     creategroup = CreateMenuItem(Menu,"创建群聊");
     searchgroup = CreateMenuItem(Menu,"加好友/群");
     g_signal_connect(exit,"activate",returnApp,fwindow);
@@ -834,6 +838,7 @@ int main(int argc,char * argv[]){
     memset(target,0,sizeof(target));
     memset(member,0,sizeof(member));
     memset(group,0,sizeof(group));
+    // memset(&msgdata,0,sizeof(msg));
     fwindow = login_win(fwindow);
     showWin(fwindow);
 }
