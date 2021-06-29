@@ -64,6 +64,7 @@ void ansDialog(char *data); // 显示从服务器返回的信息
 void create_win(void);   // 创建群聊
 void search_win(void);   // 加好友/群
 void change(GtkWidget *window, gpointer data);
+void refresh(void); // 刷新主页面
 GtkWidget *CreateMenuItem(GtkWidget *MenuBar,char *test);  // 创建目录项
 GtkWidget *CreateMenu(GtkWidget *MenuItem);   // 创建目录条
 GtkWidget *login_win(GtkWidget *window);  // 登录窗口
@@ -252,7 +253,7 @@ GtkWidget *main_win(GtkWidget *window){
     GtkWidget *frame1,*frame2;
     GtkWidget *vbox1,*vbox2;
     GtkWidget *box,*mbox;
-    GtkWidget *menubar,*menuFile,*submenu;
+    GtkWidget *menubar,*menuFile,*submenu,*menuRefresh;
     GtkWidget *menuQuit,*menuChange;
     GtkWidget *view;
     
@@ -279,6 +280,8 @@ GtkWidget *main_win(GtkWidget *window){
     menubar = gtk_menu_bar_new();
     gtk_box_pack_start(vbox1,menubar,FALSE,FALSE,0);
     menuFile = CreateMenuItem(menubar,"菜单");
+    menuRefresh = CreateMenuItem(menubar,"刷新");
+    g_signal_connect(menuRefresh,"activate",refresh,NULL);
     /*
         submenu
     */
@@ -333,7 +336,7 @@ GtkWidget *CreateMenu(GtkWidget *MenuItem){
     exit = CreateMenuItem(Menu,"退出");
     creategroup = CreateMenuItem(Menu,"创建群聊");
     searchgroup = CreateMenuItem(Menu,"加好友/群");
-    g_signal_connect(exit,"activate",gtk_main_quit,NULL);
+    g_signal_connect(exit,"activate",closeApp,NULL);
     g_signal_connect(creategroup,"activate",create_win,NULL);
     g_signal_connect(searchgroup,"activate",search_win,NULL);
     gtk_menu_item_set_submenu(MenuItem,Menu);
@@ -523,6 +526,12 @@ void Search(GtkWidget *button, gpointer data){
             }
             break;
     }
+}
+void refresh(){
+    ansDialog("刷新中");
+    gtk_widget_destroy(fwindow);
+    fwindow = main_win(fwindow);
+    showWin(fwindow);
 }
 void msgDialog(GtkWidget *window,char *data,gint type){
     GtkWidget *hbox1,*hbox2,*vbox;
