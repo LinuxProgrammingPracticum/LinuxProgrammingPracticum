@@ -396,7 +396,7 @@ bool joingroup(msg message, int sockfd) {
         sprintf(sql,
                 "insert into groupmember(username,groupname,isadmin) values "
                 "(\"%s\",\"%s\",\"%s\")",
-                message.me, message.target, "np");
+                message.me, message.target, "no");
         if (update(sql) == EXIT_FAILURE)
             dprintf(STDERR_FILENO, "%s error\n", sql);
         n = infomsg(message, Info, sockfd, "加群成功");
