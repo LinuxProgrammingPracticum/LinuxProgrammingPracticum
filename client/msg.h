@@ -16,6 +16,7 @@
  * DeleteFriend         ：删除好友
  * QueryFriendList      ：查询好友列表
  * QueryGroupList       ：查询群组列表
+ * QueryUnHeard         ：查询未接收消息列表
  */
 enum Type {
     Login,
@@ -33,6 +34,7 @@ enum Type {
     DeleteFriend,
     QueryFriendList,
     QueryGroupList,
+    QueryUnHeard,
 };
 
 /**
@@ -50,6 +52,6 @@ typedef struct Msg {
     unsigned melen;
     char me[20];
     unsigned buflen;
-    char buf[2048];
+    char buf[1024];
 } msg;
 #endif

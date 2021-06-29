@@ -179,11 +179,22 @@ bool sendtouser(msg message, int sockfd) {
     write(sockfd, &message, sizeof(message));  //回音
     int targetsock = findsockfd(message.target);
     int result = 0;
+    char sql[2048];
     if (targetsock != 0)
         result = write(targetsock, &message,
                        sizeof(message));  //若对方在线，发送消息
+    else {
+        sprintf(sql,
+                "insert into unheard(name,targetname,type) "
+                "values(\"%s\",\"%s\",\"%s\")",
+                message.me, message.target, "user");
+        if (update(sql) == EXIT_SUCCESS)
+            memset(sql, '\0', sizeof(sql));
+        else {
+            return false;
+        }
+    }
     //存储到数据库中
-    char sql[2048];
     sprintf(sql,
             "insert into userchat(username,targetname,time,content) "
             "values(\"%s\",\"%s\",now(),\"%s\")",
@@ -201,6 +212,7 @@ bool sendtogroup(msg message, int sockfd) {
             message.target);
     MYSQL_RES* result;
     result = query(sql);
+    memset(sql, '\0', sizeof(sql));
     MYSQL_ROW sqlrow;
     int sock;
     int n;
@@ -210,6 +222,14 @@ bool sendtogroup(msg message, int sockfd) {
         if (sock != 0) {
             //向所有在线成员发送（包括自身的回音）
             n = write(sock, &message, sizeof(message));
+        } else {
+            //不在线就存进未接收消息表
+            sprintf(sql,
+                    "insert into unheard(name,targetname,type) "
+                    "values(\"%s\",\"%s\",\"%s\")",
+                    message.me, sqlrow[0], "group");
+            if (update(sql) == EXIT_SUCCESS)
+                memset(sql, '\0', sizeof(sql));
         }
     }
     mysql_free_result(result);
@@ -509,7 +529,6 @@ bool queryfriendlist(msg message, int sockfd) {
         return false;
     }
     MYSQL_ROW sqlrow;
-    int i;
     while (sqlrow = mysql_fetch_row(result)) {
         infomsg(message, message.command, sockfd, sqlrow[0]);
     }
@@ -530,13 +549,65 @@ bool querygrouplist(msg message, int sockfd) {
         return false;
     }
     MYSQL_ROW sqlrow;
-    int i;
     while (sqlrow = mysql_fetch_row(result)) {
         infomsg(message, message.command, sockfd, sqlrow[0]);
     }
     mysql_free_result(result);
     infomsg(message, Info, sockfd, "查询完毕");
     return true;
+}
+/**
+ * 查询未接收消息列表
+ */
+bool queryunheard(msg message, int sockfd) {
+    char sql[200];
+    char buf[1024];
+    sprintf(buf, "来自用户的未读消息：");
+    sprintf(
+        sql,
+        "select name from unheard where targetname = \"%s\" and type = \"%s\"",
+        message.me, "user");
+    MYSQL_RES* result = query(sql);
+    memset(sql, '\0', sizeof(sql));
+    if (result == NULL) {
+        infomsg(message, Info, sockfd, "数据库查询出错");
+        return false;
+    }
+    MYSQL_ROW sqlrow;
+    int rows = mysql_num_rows(result);
+    if (rows == 0)
+        strcat(buf, "无");
+    while (sqlrow = mysql_fetch_row(result)) {
+        strcat(buf, " ");
+        strcat(buf, sqlrow[0]);
+    }
+    mysql_free_result(result);
+    strcat(buf, "\n来自群的未读消息：");
+    sprintf(
+        sql,
+        "select name from unheard where targetname = \"%s\" and type = \"%s\"",
+        message.me, "group");
+    result = query(sql);
+    memset(sql, '\0', sizeof(sql));
+    if (result == NULL) {
+        infomsg(message, Info, sockfd, "数据库查询出错");
+        return false;
+    }
+    rows = mysql_num_rows(result);
+    if (rows == 0)
+        strcat(buf, "无");
+    while (sqlrow = mysql_fetch_row(result)) {
+        strcat(buf, " ");
+        strcat(buf, sqlrow[0]);
+    }
+    mysql_free_result(result);
+    sprintf(sql, "delete from unheard where targetname = \"%s\"", message.me);
+    if (update(sql) == EXIT_SUCCESS)
+        memset(sql, '\0', sizeof(sql));
+    if (infomsg(message, message.command, sockfd, buf)) {
+        return true;
+    }
+    return false;
 }
 /**
  * 处理信息的总接口
@@ -593,6 +664,9 @@ bool handle(msg message, int sockfd) {
             break;
         case QueryGroupList:
             result = querygrouplist(message, sockfd);
+            break;
+        case QueryUnHeard:
+            result = queryunheard(message, sockfd);
             break;
     }
     return result;

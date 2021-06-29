@@ -179,4 +179,12 @@ bool queryfriendlist(int sockfd, char* username) {
 bool querygrouplist(int sockfd, char* username) {
     return sendMsg(QueryGroupList, sockfd, username, "", "");
 }
+/**
+ * 查询未接收消息列表
+ * 参数：连接套接字，用户名
+ * 返回值：成功为true，错误为false
+ */ 
+bool queryunheard(int sockfd,char * username){
+    return sendMsg(QueryUnHeard, sockfd, username, "", "");
+}
 #endif
