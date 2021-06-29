@@ -179,7 +179,7 @@ bool sendtouser(msg message, int sockfd) {
     write(sockfd, &message, sizeof(message));  //回音
     int targetsock = findsockfd(message.target);
     int result = 0;
-    if (sockfd != 0)
+    if (targetsock != 0)
         result = write(targetsock, &message,
                        sizeof(message));  //若对方在线，发送消息
     //存储到数据库中
