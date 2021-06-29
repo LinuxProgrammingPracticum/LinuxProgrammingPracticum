@@ -188,11 +188,8 @@ bool sendtouser(msg message, int sockfd) {
                 "insert into unheard(name,targetname,type) "
                 "values(\"%s\",\"%s\",\"%s\")",
                 message.me, message.target, "user");
-        if (update(sql) == EXIT_SUCCESS)
-            memset(sql, '\0', sizeof(sql));
-        else {
-            return false;
-        }
+        update(sql);
+        memset(sql, '\0', sizeof(sql));
     }
     //存储到数据库中
     sprintf(sql,
@@ -228,8 +225,8 @@ bool sendtogroup(msg message, int sockfd) {
                     "insert into unheard(name,targetname,type) "
                     "values(\"%s\",\"%s\",\"%s\")",
                     message.me, sqlrow[0], "group");
-            if (update(sql) == EXIT_SUCCESS)
-                memset(sql, '\0', sizeof(sql));
+            update(sql);
+            memset(sql, '\0', sizeof(sql));
         }
     }
     mysql_free_result(result);
