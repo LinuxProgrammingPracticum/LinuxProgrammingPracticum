@@ -9,6 +9,7 @@ gtk版本：3.22
 #include <string.h>
 #include "connection.h"
 #include "msg.h"
+
 /* 数据变量 */
 enum{
     ID_COLUMN,
@@ -220,6 +221,9 @@ void login_button_clicked(GtkWidget *button, gpointer data){
             printf("Access granted!\n");
             memset(me,0,sizeof(gchar));
             strcpy(me,username_text);
+            memset(title,0,sizeof(gchar));
+            sprintf(title,"%s",me);
+            strcat(title,",欢迎您");
             gtk_widget_destroy(data);
             fwindow = main_win(fwindow);
             showWin(fwindow);
@@ -419,7 +423,7 @@ void search_win(void){
     GtkWidget *frame;
     GtkWidget *vbox,*hbox;
     GtkWidget *radio_group;
-    GtkWidget *radio_user;
+    GtkWidget *radio_user,*radio_useless;
     GtkWidget *entry;
     GSList *group;
     gchar *stitle = "加好友/群";
@@ -429,6 +433,7 @@ void search_win(void){
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(window,stitle);
     gtk_container_set_border_width(window,10);
+    gtk_window_set_position(window,GTK_WIN_POS_CENTER);
     g_signal_connect(window,"destroy",gtk_main_quit,NULL);
     vbox = gtk_vbox_new(FALSE,0);
     gtk_container_add(window,vbox);
@@ -444,7 +449,11 @@ void search_win(void){
     gtk_container_set_border_width(hbox,10);
     gtk_container_add(frame,hbox);
 
-    radio_group = gtk_radio_button_new_with_label(NULL,"找群");
+    radio_useless = gtk_radio_button_new_with_label(NULL,"请选择类型");
+    gtk_box_pack_start(hbox,radio_useless,FALSE,FALSE,5);
+
+    group = gtk_radio_button_get_group(radio_useless);
+    radio_group = gtk_radio_button_new_with_label(group,"找群");
     g_signal_connect(radio_group,"released",change,(gpointer)1);
     gtk_box_pack_start(hbox,radio_group,FALSE,FALSE,5);
 
@@ -612,17 +621,20 @@ GtkWidget *chat_win(GtkWidget *window,gint chat_with){
         gdk_threads_init();
         g_thread_create((GThreadFunc)userhistory,NULL,FALSE,NULL);
     }
-    // gdk_threads_enter();
     gtk_main();
-    // gdk_threads_leave();
 }
 void grouphistory(void){ // 群组历史消息
     GtkTextIter iter;
     gchar get_buf[2048];
+    gchar buf[2048];
     if(queryhistoryfromgroup(sd,me,target)){
         receivemsg(sd,&msgdata);
         while(msgdata.command != Info){
-            sprintf(get_buf,"%s\n",msgdata.buf);
+            memset(buf,0,sizeof(gchar));
+            sprintf(buf,"%s  ",msgdata.me);
+            strcat(buf," : ");
+            strcat(buf,msgdata.buf);
+            sprintf(get_buf,"%s\n",buf);
             gdk_threads_enter();
             gtk_text_buffer_get_end_iter(buffer,&iter);
             gtk_text_buffer_insert(buffer,&iter,get_buf,-1);    
@@ -630,20 +642,47 @@ void grouphistory(void){ // 群组历史消息
             receivemsg(sd,&msgdata);
         }   
     }
+    while(read(sd,&msgdata,sizeof(msg)) != -1){
+        memset(buf,0,sizeof(gchar));
+        sprintf(buf,"%s  ",msgdata.me);
+        strcat(buf," : ");
+        strcat(buf,msgdata.buf);
+        sprintf(get_buf,"%s\n",buf);
+        gdk_threads_enter();
+        gtk_text_buffer_get_end_iter(buffer,&iter);
+        gtk_text_buffer_insert(buffer,&iter,get_buf,-1);    
+        gdk_threads_leave();
+    }
 }
 void userhistory(void){  // 用户历史消息
     GtkTextIter iter;
     gchar get_buf[2048];
+    gchar buf[2048];
     if(queryhistoryfromuser(sd,me,target)){
         receivemsg(sd,&msgdata);
         while(msgdata.command != Info){
-            sprintf(get_buf,"%s\n",msgdata.buf);
+            memset(buf,0,sizeof(gchar));
+            sprintf(buf,"%s  ",msgdata.me);
+            strcat(buf," : ");
+            strcat(buf,msgdata.buf);
+            sprintf(get_buf,"%s\n",buf);
             gdk_threads_enter();
             gtk_text_buffer_get_end_iter(buffer,&iter);
             gtk_text_buffer_insert(buffer,&iter,get_buf,-1);    
             gdk_threads_leave();
             receivemsg(sd,&msgdata);
         }   
+    }
+    while(read(sd,&msgdata,sizeof(msg)) != -1){
+        memset(buf,0,sizeof(gchar));
+        sprintf(buf,"%s  ",msgdata.me);
+        strcat(buf," : ");
+        strcat(buf,msgdata.buf);
+        sprintf(get_buf,"%s\n",buf);
+        gdk_threads_enter();
+        gtk_text_buffer_get_end_iter(buffer,&iter);
+        gtk_text_buffer_insert(buffer,&iter,get_buf,-1);    
+        gdk_threads_leave();
     }
 }
 void chat_with_group(GtkWidget *button, gpointer data){   // 与群组进行交流
@@ -673,7 +712,7 @@ void chat_with_user(GtkWidget *button, gpointer data){   // 与用户进行交�
 void send_user(GtkWidget *button, gpointer data){
     gchar *message = gtk_entry_get_text(data);
     if(sendtouser(sd,me,target,message)){
-        gtk_entry_set_text(data,"");
+        gtk_entry_set_text(data,"");     
     }
 }
 void delete_group(GtkWidget *button, gpointer data){   // 删除群组
