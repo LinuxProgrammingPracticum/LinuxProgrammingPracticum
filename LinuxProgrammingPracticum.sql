@@ -9,7 +9,7 @@ CREATE TABLE `LinuxProgrammingPracticum`.`groupchat` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `username` VARCHAR(45) NOT NULL,
   `groupname` VARCHAR(45) NOT NULL,
-  `time` DATETIME NOT NULL,
+  `timunhearde` DATETIME NOT NULL,
   `content` VARCHAR(200) NOT NULL,
   PRIMARY KEY (`id`));
   
@@ -42,3 +42,9 @@ CREATE TABLE `LinuxProgrammingPracticum`.`userchat` (
   `time` DATETIME NOT NULL,
   `content` VARCHAR(200) NOT NULL,
   PRIMARY KEY (`id`));
+
+CREATE TABLE `LinuxProgrammingPracticum`.`unheard` (
+  `name` VARCHAR(45) NOT NULL,
+  `targetname` VARCHAR(45) NOT NULL,
+  `type` VARCHAR(45) NOT NULL,
+  PRIMARY KEY (`name`, `targetname`, `type`));
