@@ -44,7 +44,7 @@ CREATE TABLE `LinuxProgrammingPracticum`.`userchat` (
   PRIMARY KEY (`id`));
 
 CREATE TABLE `LinuxProgrammingPracticum`.`unheard` (
-  `name` VARCHAR(45) NOT NULL,
   `targetname` VARCHAR(45) NOT NULL,
+  `name` VARCHAR(45) NOT NULL,
   `type` VARCHAR(45) NOT NULL,
-  PRIMARY KEY (`name`, `targetname`, `type`));
+  PRIMARY KEY (`targetname`, `name`));
