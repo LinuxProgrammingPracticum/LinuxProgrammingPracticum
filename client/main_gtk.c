@@ -31,8 +31,6 @@ static GtkTextBuffer *buffer;
 static GtkWidget *username_entry,*password_entry,*check_password_entry;
 GtkWidget *treeView1,*treeView2;
 gint sd,kind = 0;
-gint sd1;
-struct sockaddr_in s_in;
 gchar target[20],me[20];//目标,用户
 msg msgdata;
 gchar ipaddr[20]; // ip地址
@@ -81,18 +79,15 @@ void showWin(GtkWidget *window){
     gtk_main();
 }
 void closeApp(GtkWidget *window, gpointer data){
-    if(data != NULL){
-        gtk_widget_destroy(data);
-    }else{
         gtk_main_quit();
-    }
 }
 void returnApp(GtkWidget *window, gpointer data){
-    close(sd);
-    sd = getconnection(ipaddr);
-    if(data != NULL){
+    // close(sd);
+    // sd = getconnection(ipaddr);
+    // if(data != NULL){
         gtk_widget_destroy(data);
-    }
+        gtk_main_quit();
+    // }
 }
 
 
@@ -153,7 +148,7 @@ void signin_button_click(GtkWidget *button,gpointer data){
         if(registe(sd,username_text,password_text)){
             receivemsg(sd,&msgdata);
             if(!strcmp(msgdata.buf,"创建成功")){
-                printf("Signin granted!\n");
+                // printf("Signin granted!\n");
                 ansDialog("注册成功!");
                 gtk_widget_destroy(data);
                 fwindow = login_win(fwindow);
@@ -224,7 +219,7 @@ void login_button_clicked(GtkWidget *button, gpointer data){
     if(login(sd,username_text,password_text)){
         receivemsg(sd,&msgdata);
         if(!strcmp(msgdata.buf,"success")){
-            printf("Access granted!\n");
+            // printf("Access granted!\n");
             memset(me,0,sizeof(gchar));
             strcpy(me,username_text);
             if(queryunheard(sd,me)){
@@ -235,7 +230,7 @@ void login_button_clicked(GtkWidget *button, gpointer data){
             fwindow = main_win(fwindow);
             showWin(fwindow);
         }else{
-            printf("Access denied!\n");
+            // printf("Access denied!\n");
             ansDialog(msgdata.buf);
         } 
     }else{
@@ -381,7 +376,6 @@ void tree_selection_changed(GtkTreeSelection *selection, gpointer data){
     gchar *title;
     if(gtk_tree_selection_get_selected(selection,&model,&iter)){
         gtk_tree_model_get(model,&iter,TEXT_COLUMN,&title,-1);
-        printf("你选择了:%s\n",title);
         msgDialog(dwindow,title,data);
         g_free(title);
     }
@@ -548,7 +542,6 @@ void msgDialog(GtkWidget *window,char *data,gint type){
     hbox1 = gtk_hbox_new(TRUE,5);
     hbox2 = gtk_hbox_new(TRUE,5);
     btn1 = gtk_button_new_with_label("聊天");
-    printf("%s\n",me);
     memset(target,0,sizeof(gchar));
     strcpy(target,data);
     if(type == 1){
@@ -603,7 +596,7 @@ GtkWidget *chat_win(GtkWidget *window,gint chat_with){
     gtk_window_set_default_size(window,700,550);
     gtk_window_set_position(window,GTK_WIN_POS_CENTER);
     gtk_window_set_resizable(window,FALSE);
-    g_signal_connect(window,"destroy",returnApp,window);
+    g_signal_connect(window,"destroy",closeApp,window);
     vbox = gtk_vbox_new(FALSE,5);
     gtk_container_add(window,vbox);
     /* 
@@ -669,17 +662,23 @@ void grouphistory(void){ // 群组历史消息
             receivemsg(sd,&msgdata);
         }   
     }
-    while(read(sd,&msgdata,sizeof(msg)) != -1){
+    int id = 1;
+    // while(read(sd,&msgdata,sizeof(msg)) != -1){
+    while(id != -1){
+        id = read(sd,&msgdata,sizeof(msg));
+        printf("成功%d\n",id);
         memset(buf,0,sizeof(gchar));
         sprintf(buf,"%s  ",msgdata.me);
         strcat(buf," : ");
         strcat(buf,msgdata.buf);
         sprintf(get_buf,"%s\n",buf);
+        printf("%s",get_buf);
         gdk_threads_enter();
         gtk_text_buffer_get_end_iter(buffer,&iter);
         gtk_text_buffer_insert(buffer,&iter,get_buf,-1);    
         gdk_threads_leave();
     }
+    printf("失败%d\n",id);
 }
 void userhistory(void){  // 用户历史消息
     GtkTextIter iter;
@@ -756,7 +755,6 @@ void delete_group(GtkWidget *button, gpointer data){   // 删除群组
     }
 }
 void quit_group(GtkWidget *button, gpointer data){    //退出群组
-    printf("%s\n%s\n",me,target);
     if(quitgroup(sd,me,target)){
         receivemsg(sd,&msgdata); 
         ansDialog(msgdata.buf);
@@ -796,7 +794,7 @@ void ansDialog(char *data){
     vbox = gtk_vbox_new(FALSE,10);
     label = gtk_label_new(data);
     btn = gtk_button_new_with_label("确定");
-    g_signal_connect(btn,"clicked",closeApp,window);
+    g_signal_connect(btn,"clicked",returnApp,window);
     gtk_box_pack_start(vbox,label,TRUE,FALSE,5);
     gtk_box_pack_start(vbox,btn,TRUE,FALSE,5);
     gtk_container_add(window,vbox);
@@ -852,12 +850,11 @@ int main(int argc,char * argv[]){
         return EXIT_SUCCESS;
     }
     sprintf(ipaddr,"%s",argv[1]);
-    printf("%s\n",ipaddr);
+    // printf("%s\n",ipaddr);
     memset(me,0,sizeof(me));
     memset(target,0,sizeof(target));
     memset(member,0,sizeof(member));
     memset(group,0,sizeof(group));
-    // memset(&msgdata,0,sizeof(msg));
     fwindow = login_win(fwindow);
     showWin(fwindow);
 }
