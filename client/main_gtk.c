@@ -7,6 +7,10 @@ gtk版本：3.22
 #include <gtk/gtk.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include "connection.h"
 #include "msg.h"
 
@@ -34,7 +38,6 @@ gint sd,kind = 0;
 gchar target[20],me[20];//目标,用户
 msg msgdata;
 gchar ipaddr[20]; // ip地址
-//gint chat_with = 0; // 标志聊天对象的属性,1为群组,2为好友
 /* 群组和用户数据 */
 TreeItem group[20];
 TreeItem member[20];
@@ -71,7 +74,7 @@ GtkWidget *main_win(GtkWidget *window);   // 主窗口
 GtkWidget *chat_win(GtkWidget *window,gint chat_with);  //聊天窗口
 GtkWidget *createTreeView(GtkWidget *treeview,TreeItem *t,gint length,gint type); // 创建一个树形列表
 void msgDialog(GtkWidget *window,char *data,gint type); // 询问与当前点击项目有关的信息
-void showPage(gint type,gchar data[][2048],gint length);  // 展示历史消息
+void showPage();  // 展示历史消息
 
 /* 通用功能函数 */
 void showWin(GtkWidget *window){
@@ -616,13 +619,17 @@ GtkWidget *chat_win(GtkWidget *window,gint chat_with){
     gtk_box_pack_start(hbox,button,FALSE,FALSE,5);
     button1 = gtk_button_new_with_label("查看消息记录");
     gtk_box_pack_start(hbox,button1,FALSE,FALSE,5);
-    if(chat_with == 1){  
+
+    if(chat_with == 1){
+        grouphistory();  
         g_signal_connect(button,"clicked",send_group,message_entry);
-        g_signal_connect(button1,"clicked",grouphistory,NULL);
+        g_signal_connect(button1,"clicked",showPage,NULL);
     }else if(chat_with == 2){
+        userhistory();
         g_signal_connect(button,"clicked",send_user,message_entry);
-        g_signal_connect(button1,"clicked",userhistory,NULL);
+        g_signal_connect(button1,"clicked",showPage,NULL);
     }
+    
     if (!gtk_widget_get_visible (window)){
         gtk_widget_show(window);
         gtk_widget_show_all (window);
@@ -637,7 +644,7 @@ GtkWidget *chat_win(GtkWidget *window,gint chat_with){
     }
     gtk_main();
 }
-void showPage(gint type,gchar data[][2048],gint length){
+void showPage(){
     GtkWidget *window;
     GtkWidget *mtext;
     GtkWidget *view;
@@ -650,6 +657,7 @@ void showPage(gint type,gchar data[][2048],gint length){
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(window,"历史记录");
     gtk_window_set_default_size(window,400,300);
+    gtk_window_set_position(window,GTK_WIN_POS_CENTER);
     gtk_window_set_resizable(window,FALSE);
     g_signal_connect(window,"destroy",closeApp,window);
     frame = gtk_frame_new("历史记录：");
@@ -661,11 +669,16 @@ void showPage(gint type,gchar data[][2048],gint length){
     mtext = gtk_text_view_new();
     gtk_container_add(view,mtext);
     hbuffer = gtk_text_view_get_buffer(mtext);
-    int j;
-    for(j = 0;j < length;j++){
+    FILE *fp;
+    fp = fopen("gMsg.txt","r");
+    char s[1024];
+    while(!feof(fp)){
+        fgets(s,sizeof(s),fp);
+        printf("%s",s);
         gtk_text_buffer_get_iter_at_offset(hbuffer,&iter,0);
-        gtk_text_buffer_insert(hbuffer,&iter,data[j],-1);
+        gtk_text_buffer_insert(hbuffer,&iter,s,-1);
     }
+    fclose(fp);
     gtk_container_add(frame,view);
     if (!gtk_widget_get_visible (window)){
         gtk_widget_show(window);
@@ -674,40 +687,50 @@ void showPage(gint type,gchar data[][2048],gint length){
         gtk_widget_destroy (window);
     gtk_main();
 }
-void grouphistory(){
-    gchar get_buf[2048];
-    gchar buf[2048];
-    gchar messages[2048][2048];
-    if(queryhistoryfromgroup(sd,me,target)){
-        printf("1111\n");
-        receivemsg(sd,&msgdata);
-        memset(messages,0,sizeof(gchar));
-        int i = 0;
+void grouphistory(void){
+    gchar get_buf[1024];
+    gchar buf[1024];
+    int sd1;
+    sd1 = getconnection(ipaddr);
+    if(sd1 > 0){
+        printf("success\n");
+    }else{
+        printf("failed\n");
+    }
+    if(queryhistoryfromgroup(sd1,me,target)){
+        receivemsg(sd1,&msgdata);
+        FILE *fp;
+        fp = fopen("gMsg.txt","a+");
         while(msgdata.command != Info){
             memset(buf,0,sizeof(gchar));
+            memset(get_buf,0,sizeof(gchar));
             sprintf(buf,"%s ",msgdata.me);
             strcat(buf," : ");
             strcat(buf,msgdata.buf);
             sprintf(get_buf,"%s\n",buf);
-            sprintf(messages[i],"%s",get_buf);
-            i++;
-            receivemsg(sd,&msgdata);
+            int len = strlen(get_buf);
+            fputs(get_buf,fp);
+            receivemsg(sd1,&msgdata);
         }
-        printf("%d\n",i);
-        showPage(1,messages,i);
-    }  
+        sprintf(get_buf,"%s\n","-----记录截止到本次打开聊天窗口-----");
+        fputs(get_buf,fp);
+        fclose(fp);
+    } 
+    close(sd1); 
 }
 void groupchat(void){ // 群组实时聊天
     GtkTextIter iter;
-    gchar get_buf[2048];
-    gchar buf[2048];
+    gchar get_buf[1024];
+    gchar buf[1024];
     while(read(sd,&msgdata,sizeof(msg)) != -1){
+        if(strcmp(msgdata.buf,"查询完毕") == -1){
+            continue;
+        }
         memset(buf,0,sizeof(gchar));
         sprintf(buf,"%s  ",msgdata.me);
         strcat(buf," : ");
         strcat(buf,msgdata.buf);
         sprintf(get_buf,"%s\n",buf);
-        printf("%s",get_buf);
         gdk_threads_enter();
         gtk_text_buffer_get_end_iter(buffer,&iter);
         gtk_text_buffer_insert(buffer,&iter,get_buf,-1);    
@@ -715,32 +738,44 @@ void groupchat(void){ // 群组实时聊天
     }
 }
 void userhistory(void){
-    gchar get_buf[2048];
-    gchar buf[2048];
-    gchar messages[2048][2048];
-    if(queryhistoryfromuser(sd,me,target)){
-        receivemsg(sd,&msgdata);
-        memset(messages,0,sizeof(gchar));
-        int i = 0;
+    gchar get_buf[1024];
+    gchar buf[1024];
+    int sd1;
+    sd1 = getconnection(ipaddr);
+    if(sd1 > 0){
+        printf("success\n");
+    }else{
+        printf("failed\n");
+    }
+    if(queryhistoryfromuser(sd1,me,target)){
+        receivemsg(sd1,&msgdata);
+        FILE *fp;
+        fp = fopen("gMsg.txt","a+");
         while(msgdata.command != Info){
             memset(buf,0,sizeof(gchar));
+            memset(get_buf,0,sizeof(gchar));
             sprintf(buf,"%s ",msgdata.me);
             strcat(buf," : ");
             strcat(buf,msgdata.buf);
             sprintf(get_buf,"%s\n",buf);
-            sprintf(messages[i],"%s",get_buf);
-            i++;
-            receivemsg(sd,&msgdata);
+            int len = strlen(get_buf);
+            fputs(get_buf,fp);
+            receivemsg(sd1,&msgdata);
         }
-        printf("%d\n",i);
-        showPage(2,messages,i);
+        sprintf(get_buf,"%s\n","-----记录截止到本次打开聊天窗口-----");
+        fputs(get_buf,fp);
+        fclose(fp);
     } 
+    close(sd1);
 }
 void userchat(void){  // 用户实时聊天
     GtkTextIter iter;
-    gchar get_buf[2048];
-    gchar buf[2048];
+    gchar get_buf[1024];
+    gchar buf[1024];
     while(read(sd,&msgdata,sizeof(msg)) != -1){
+        if(strcmp(msgdata.buf,"查询完毕") == -1){
+            continue;
+        }
         memset(buf,0,sizeof(gchar));
         sprintf(buf,"%s  ",msgdata.me);
         strcat(buf," : ");
@@ -891,11 +926,11 @@ int main(int argc,char * argv[]){
         return EXIT_SUCCESS;
     }
     sprintf(ipaddr,"%s",argv[1]);
-    // printf("%s\n",ipaddr);
     memset(me,0,sizeof(me));
     memset(target,0,sizeof(target));
     memset(member,0,sizeof(member));
     memset(group,0,sizeof(group));
     fwindow = login_win(fwindow);
     showWin(fwindow);
+    return FALSE;
 }
