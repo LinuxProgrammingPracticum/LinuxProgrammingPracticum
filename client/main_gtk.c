@@ -27,7 +27,7 @@ static GtkWidget *fwindow = NULL; //主窗口
 static GtkWidget *dwindow = NULL; //对话窗口
 static GtkWidget *cwindow = NULL; //聊天窗口
 static GtkWidget *text;
-static GtkTextBuffer *buffer;
+static GtkTextBuffer *buffer,*hbuffer;
 static GtkWidget *username_entry,*password_entry,*check_password_entry;
 GtkWidget *treeView1,*treeView2;
 gint sd,kind = 0;
@@ -58,11 +58,12 @@ void Creategroup(GtkWidget *button, gpointer data);   // 创建群聊
 void Search(GtkWidget *button, gpointer data);   // 加好友/群
 void grouphistory(void);  // 群组历史消息
 void userhistory(void);  // 用户历史消息
+void groupchat(void);  // 群组实时聊天
+void userchat(void);  // 用户实时聊天
 void ansDialog(char *data); // 显示从服务器返回的信息
 void create_win(void);   // 创建群聊
 void search_win(void);   // 加好友/群
 void change(GtkWidget *window, gpointer data);
-void refresh(void); // 刷新主页面
 GtkWidget *CreateMenuItem(GtkWidget *MenuBar,char *test);  // 创建目录项
 GtkWidget *CreateMenu(GtkWidget *MenuItem);   // 创建目录条
 GtkWidget *login_win(GtkWidget *window);  // 登录窗口
@@ -70,6 +71,7 @@ GtkWidget *main_win(GtkWidget *window);   // 主窗口
 GtkWidget *chat_win(GtkWidget *window,gint chat_with);  //聊天窗口
 GtkWidget *createTreeView(GtkWidget *treeview,TreeItem *t,gint length,gint type); // 创建一个树形列表
 void msgDialog(GtkWidget *window,char *data,gint type); // 询问与当前点击项目有关的信息
+void showPage(gint type,gchar data[][2048],gint length);  // 展示历史消息
 
 /* 通用功能函数 */
 void showWin(GtkWidget *window){
@@ -82,12 +84,8 @@ void closeApp(GtkWidget *window, gpointer data){
         gtk_main_quit();
 }
 void returnApp(GtkWidget *window, gpointer data){
-    // close(sd);
-    // sd = getconnection(ipaddr);
-    // if(data != NULL){
         gtk_widget_destroy(data);
         gtk_main_quit();
-    // }
 }
 
 
@@ -275,8 +273,6 @@ GtkWidget *main_win(GtkWidget *window){
     menubar = gtk_menu_bar_new();
     gtk_box_pack_start(vbox1,menubar,FALSE,FALSE,0);
     menuFile = CreateMenuItem(menubar,"菜单");
-    menuRefresh = CreateMenuItem(menubar,"刷新");
-    g_signal_connect(menuRefresh,"activate",refresh,NULL);
     /*
         submenu
     */
@@ -521,12 +517,6 @@ void Search(GtkWidget *button, gpointer data){
             break;
     }
 }
-void refresh(){
-    ansDialog("刷新中");
-    gtk_widget_destroy(fwindow);
-    fwindow = main_win(fwindow);
-    showWin(fwindow);
-}
 void msgDialog(GtkWidget *window,char *data,gint type){
     GtkWidget *hbox1,*hbox2,*vbox;
     GtkWidget *btn1,*btn2;
@@ -584,7 +574,7 @@ GtkWidget *chat_win(GtkWidget *window,gint chat_with){
     GtkWidget *frame;
     GtkWidget *vbox;
     GtkWidget *hbox;
-    GtkWidget *button;
+    GtkWidget *button,*button1;
     GtkWidget *view;
     GtkWidget *message_entry;
     if(!g_thread_supported()){
@@ -602,7 +592,7 @@ GtkWidget *chat_win(GtkWidget *window,gint chat_with){
     /* 
         message display box
     */
-    frame = gtk_frame_new("消息记录：");
+    frame = gtk_frame_new("聊天信息：");
     gtk_box_pack_start(vbox,frame,FALSE,FALSE,5);
     gtk_widget_set_size_request(frame,500,400);
     gtk_container_set_border_width(frame,10);
@@ -624,10 +614,14 @@ GtkWidget *chat_win(GtkWidget *window,gint chat_with){
     
     button = gtk_button_new_with_label("确定发送");
     gtk_box_pack_start(hbox,button,FALSE,FALSE,5);
+    button1 = gtk_button_new_with_label("查看消息记录");
+    gtk_box_pack_start(hbox,button1,FALSE,FALSE,5);
     if(chat_with == 1){  
         g_signal_connect(button,"clicked",send_group,message_entry);
+        g_signal_connect(button1,"clicked",grouphistory,NULL);
     }else if(chat_with == 2){
         g_signal_connect(button,"clicked",send_user,message_entry);
+        g_signal_connect(button1,"clicked",userhistory,NULL);
     }
     if (!gtk_widget_get_visible (window)){
         gtk_widget_show(window);
@@ -636,37 +630,78 @@ GtkWidget *chat_win(GtkWidget *window,gint chat_with){
         gtk_widget_destroy (window);
     if(chat_with == 1){
         gdk_threads_init();
-        g_thread_create((GThreadFunc)grouphistory,NULL,FALSE,NULL);
+        g_thread_create((GThreadFunc)groupchat,NULL,FALSE,NULL);
     }else if(chat_with == 2){
         gdk_threads_init();
-        g_thread_create((GThreadFunc)userhistory,NULL,FALSE,NULL);
+        g_thread_create((GThreadFunc)userchat,NULL,FALSE,NULL);
     }
     gtk_main();
 }
-void grouphistory(void){ // 群组历史消息
+void showPage(gint type,gchar data[][2048],gint length){
+    GtkWidget *window;
+    GtkWidget *mtext;
+    GtkWidget *view;
+    GtkWidget *frame;
     GtkTextIter iter;
+    if(!g_thread_supported()){
+        g_thread_init(NULL);
+    }
+    gtk_init(NULL,NULL);
+    window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(window,"历史记录");
+    gtk_window_set_default_size(window,400,300);
+    gtk_window_set_resizable(window,FALSE);
+    g_signal_connect(window,"destroy",closeApp,window);
+    frame = gtk_frame_new("历史记录：");
+    gtk_widget_set_size_request(frame,350,280);
+    gtk_container_set_border_width(frame,10);
+    gtk_container_add(window,frame);
+    view = gtk_scrolled_window_new(NULL,NULL);
+    gtk_scrolled_window_set_policy(view,GTK_POLICY_AUTOMATIC,GTK_POLICY_AUTOMATIC);
+    mtext = gtk_text_view_new();
+    gtk_container_add(view,mtext);
+    hbuffer = gtk_text_view_get_buffer(mtext);
+    int j;
+    for(j = 0;j < length;j++){
+        gtk_text_buffer_get_iter_at_offset(hbuffer,&iter,0);
+        gtk_text_buffer_insert(hbuffer,&iter,data[j],-1);
+    }
+    gtk_container_add(frame,view);
+    if (!gtk_widget_get_visible (window)){
+        gtk_widget_show(window);
+        gtk_widget_show_all (window);
+    }else
+        gtk_widget_destroy (window);
+    gtk_main();
+}
+void grouphistory(){
     gchar get_buf[2048];
     gchar buf[2048];
+    gchar messages[2048][2048];
     if(queryhistoryfromgroup(sd,me,target)){
+        printf("1111\n");
         receivemsg(sd,&msgdata);
+        memset(messages,0,sizeof(gchar));
+        int i = 0;
         while(msgdata.command != Info){
             memset(buf,0,sizeof(gchar));
-            sprintf(buf,"%s  ",msgdata.me);
+            sprintf(buf,"%s ",msgdata.me);
             strcat(buf," : ");
             strcat(buf,msgdata.buf);
             sprintf(get_buf,"%s\n",buf);
-            gdk_threads_enter();
-            gtk_text_buffer_get_end_iter(buffer,&iter);
-            gtk_text_buffer_insert(buffer,&iter,get_buf,-1);    
-            gdk_threads_leave();
+            sprintf(messages[i],"%s",get_buf);
+            i++;
             receivemsg(sd,&msgdata);
-        }   
-    }
-    int id = 1;
-    // while(read(sd,&msgdata,sizeof(msg)) != -1){
-    while(id != -1){
-        id = read(sd,&msgdata,sizeof(msg));
-        printf("成功%d\n",id);
+        }
+        printf("%d\n",i);
+        showPage(1,messages,i);
+    }  
+}
+void groupchat(void){ // 群组实时聊天
+    GtkTextIter iter;
+    gchar get_buf[2048];
+    gchar buf[2048];
+    while(read(sd,&msgdata,sizeof(msg)) != -1){
         memset(buf,0,sizeof(gchar));
         sprintf(buf,"%s  ",msgdata.me);
         strcat(buf," : ");
@@ -678,27 +713,33 @@ void grouphistory(void){ // 群组历史消息
         gtk_text_buffer_insert(buffer,&iter,get_buf,-1);    
         gdk_threads_leave();
     }
-    printf("失败%d\n",id);
 }
-void userhistory(void){  // 用户历史消息
-    GtkTextIter iter;
+void userhistory(void){
     gchar get_buf[2048];
     gchar buf[2048];
+    gchar messages[2048][2048];
     if(queryhistoryfromuser(sd,me,target)){
         receivemsg(sd,&msgdata);
+        memset(messages,0,sizeof(gchar));
+        int i = 0;
         while(msgdata.command != Info){
             memset(buf,0,sizeof(gchar));
-            sprintf(buf,"%s  ",msgdata.me);
+            sprintf(buf,"%s ",msgdata.me);
             strcat(buf," : ");
             strcat(buf,msgdata.buf);
             sprintf(get_buf,"%s\n",buf);
-            gdk_threads_enter();
-            gtk_text_buffer_get_end_iter(buffer,&iter);
-            gtk_text_buffer_insert(buffer,&iter,get_buf,-1);    
-            gdk_threads_leave();
+            sprintf(messages[i],"%s",get_buf);
+            i++;
             receivemsg(sd,&msgdata);
-        }   
-    }
+        }
+        printf("%d\n",i);
+        showPage(2,messages,i);
+    } 
+}
+void userchat(void){  // 用户实时聊天
+    GtkTextIter iter;
+    gchar get_buf[2048];
+    gchar buf[2048];
     while(read(sd,&msgdata,sizeof(msg)) != -1){
         memset(buf,0,sizeof(gchar));
         sprintf(buf,"%s  ",msgdata.me);
